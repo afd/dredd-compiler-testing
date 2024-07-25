@@ -188,6 +188,7 @@ def main():
                 try:
                     mutant_path.mkdir()
                     print("Writing kill info to file.")
+                    # TODO - add timestamp for the kill
                     with open(mutant_path / "kill_info.json", "w") as outfile:
                         json.dump({"killing_test": test_filename_without_prefix, "kill_type": str(mutant_result)},
                                   outfile)
