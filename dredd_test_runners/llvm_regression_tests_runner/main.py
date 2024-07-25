@@ -98,6 +98,8 @@ def main():
                 print("Skipping test " + test_filename + " as a directory for it already exists")
                 continue
 
+            # TODO: Record time at which consideration of this test started - analysis_start
+
             test_time_start: float = time.time()
             test_result: ProcessResult = run_process_with_timeout(
                 cmd=[args.mutated_compiler_bin_dir / "llvm-lit",
@@ -203,8 +205,14 @@ def main():
             killed_by_this_test.sort()
             covered_but_not_killed_by_this_test.sort()
             already_killed_by_other_tests.sort()
+
+            # TODO: Record time at which consideration of this test ended - analysis_end
+
+            # TODO: Record both start and end times of analysis in the JSON
+
             with open(test_output_directory / "kill_summary.json", "w") as outfile:
                 json.dump({"test": test_filename_without_prefix,
+                           # TODO: Revise to store numbers for everything except "killed_mutants"
                            "covered_mutants": covered_by_this_test,
                            "killed_mutants": killed_by_this_test,
                            "skipped_mutants": already_killed_by_other_tests,
