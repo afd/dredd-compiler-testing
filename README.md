@@ -8,7 +8,7 @@ Necessary packages on AWS EC2:
 
 ```
 sudo apt update
-sudo apt install -y python3-pip python3.10-venv unzip zip cmake clang-15 ninja-build libzstd-dev m4
+sudo apt install -y python3-pip python3.10-venv unzip zip cmake ninja-build libzstd-dev m4
 pip3 install --upgrade pip
 pip3 install build
 ```
@@ -24,7 +24,7 @@ export DREDD_EXPERIMENTS_ROOT=${HOME}
 Decide which version of the LLVM project you would like to mutate and put this version in the `LLVM_VERSION` environment variable. E.g.:
 
 ```
-export LLVM_VERSION=17.0.6
+export LLVM_VERSION=17.0.4
 ```
 
 
@@ -35,12 +35,14 @@ cd ${DREDD_EXPERIMENTS_ROOT}
 git clone --recursive https://github.com/mc-imperial/dredd.git
 pushd dredd/third_party/clang+llvm
     OS=ubuntu-22.04
-    curl -Lo clang+llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/clang+llvm-${LLVM_VERSION}-x86_64-linux-gnu-${OS}.tar.xz"
+    DREDD_LLVM_TAG=17.0.6
+    curl -Lo clang+llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-${DREDD_LLVM_TAG}/clang+llvm-${DREDD_LLVM_TAG}-x86_64-linux-gnu-${OS}.tar.xz"
     tar xf clang+llvm.tar.xz
-    mv clang+llvm-${LLVM_VERSION}-x86_64-linux-gnu-${OS}/* .
+    mv clang+llvm-${DREDD_LLVM_TAG}-x86_64-linux-gnu-${OS}/* .
     rm clang+llvm.tar.xz
 popd
-cmake -S dredd -B dredd/build -G Ninja -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15
+DREDD_COMPILER_PATH=${DREDD_EXPERIMENTS_ROOT}/dredd/third_party/clang+llvm/bin
+cmake -S dredd -B dredd/build -G Ninja -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++
 cmake --build dredd/build --target dredd
 cp dredd/build/src/dredd/dredd dredd/third_party/clang+llvm/bin/
 ```
@@ -74,7 +76,7 @@ do
   SOURCE_DIR=llvm-${LLVM_VERSION}-${kind}/llvm
   BUILD_DIR=llvm-${LLVM_VERSION}-${kind}-build
   mkdir ${BUILD_DIR}
-  cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15
+  cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++
   # Build something minimal to ensure all auto-generated pieces of code are created.
   cmake --build "${BUILD_DIR}" --target LLVMCore
 done
