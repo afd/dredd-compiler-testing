@@ -33,8 +33,13 @@ export LLVM_VERSION=17.0.4
 ```
 cd ${DREDD_EXPERIMENTS_ROOT}
 git clone --recursive https://github.com/mc-imperial/dredd.git
-pushd dredd
-    OS=ubuntu-22.04 DREDD_LLVM_SUFFIX=-stock-clang .github/workflows/install_clang.sh
+pushd dredd/third_party/clang+llvm
+    OS=ubuntu-22.04
+    LLVM_TAG=17.0.6
+    curl -Lo clang+llvm.tar.xz "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_TAG}/clang+llvm-${LLVM_TAG}-x86_64-linux-gnu-${OS}.tar.xz"
+    tar xf clang+llvm.tar.xz
+    mv clang+llvm-${LLVM_TAG}-x86_64-linux-gnu-${OS}/* .
+    rm clang+llvm.tar.xz
 popd
 cmake -S dredd -B dredd/build -G Ninja -DCMAKE_C_COMPILER=clang-15 -DCMAKE_CXX_COMPILER=clang++-15
 cmake --build dredd/build --target dredd
