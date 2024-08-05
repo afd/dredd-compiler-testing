@@ -78,7 +78,7 @@ do
   mkdir ${BUILD_DIR}
   cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++
   # Build something minimal to ensure all auto-generated pieces of code are created.
-  cmake --build "${BUILD_DIR}" --target LLVMCore
+  cmake --build "${BUILD_DIR}" --target all
 done
 ```
 
