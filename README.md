@@ -24,7 +24,7 @@ export DREDD_EXPERIMENTS_ROOT=${HOME}
 Decide which version of the LLVM project you would like to mutate and put this version in the `LLVM_VERSION` environment variable. E.g.:
 
 ```
-export LLVM_VERSION=17.0.4
+export LLVM_VERSION=14.0.0
 ```
 
 
@@ -94,26 +94,26 @@ Record the location of the `dredd` executable in an environment variable.
 export DREDD_EXECUTABLE=${DREDD_EXPERIMENTS_ROOT}/dredd/third_party/clang+llvm/bin/dredd
 ```
 
-Mutate all `.cpp` files under `InstCombine` in the copy of LLVM designated for mutation:
+Mutate all `.cpp` files under `Transforms` in the copy of LLVM designated for mutation:
 
 ```
 # (Optional) `sort` depend on locale, for reproducibility:
 export LC_ALL=C
 
 cd ${DREDD_EXPERIMENTS_ROOT}
-FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutated/llvm/lib/Transforms/InstCombine/*.cpp | sort))
+FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutated/llvm/lib/Transforms/**/*.cpp | sort))
 echo ${FILES[*]}
 ${DREDD_EXECUTABLE} -p llvm-${LLVM_VERSION}-mutated-build/compile_commands.json --mutation-info-file llvm-mutated.json ${FILES_TO_MUTATE[*]}
 ```
 
-Apply mutation tracking to all `.cpp` files under `InstCombine` in the copy of LLVM designated for mutation tracking:
+Apply mutation tracking to all `.cpp` files under `Transforms` in the copy of LLVM designated for mutation tracking:
 
 ```
 # (Optional) `sort` depend on locale, for reproducibility:
 export LC_ALL=C
 
 cd ${DREDD_EXPERIMENTS_ROOT}
-FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutant-tracking/llvm/lib/Transforms/InstCombine/*.cpp | sort))
+FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutant-tracking/llvm/lib/Transforms/**/*.cpp | sort))
 echo ${FILES[*]}
 ${DREDD_EXECUTABLE} --only-track-mutant-coverage -p llvm-${LLVM_VERSION}-mutant-tracking-build/compile_commands.json --mutation-info-file llvm-mutant-tracking.json ${FILES_TO_MUTATE[*]}
 ```
