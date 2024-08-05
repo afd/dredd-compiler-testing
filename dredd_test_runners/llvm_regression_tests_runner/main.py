@@ -213,10 +213,10 @@ def main():
 
             with open(test_output_directory / "kill_summary.json", "w") as outfile:
                 json.dump({"test": test_filename_without_prefix,
-                           "covered_mutants": len(covered_by_this_test),
+                           "covered_mutants_count": len(covered_by_this_test),
                            "killed_mutants": killed_by_this_test,
-                           "skipped_mutants": len(already_killed_by_other_tests),
-                           "survived_mutants": len(covered_but_not_killed_by_this_test),
+                           "skipped_mutants_count": len(already_killed_by_other_tests),
+                           "survived_mutants_count": len(covered_but_not_killed_by_this_test),
                            "analysis_start_time": analysis_timestamp_start,
                            "analysis_end_time": analysis_timestamp_end,
                            }, outfile)
