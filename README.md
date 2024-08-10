@@ -198,13 +198,13 @@ done
 Command to invoke regression test suite runner:
 
 ```
-llvm-regression-tests-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin llvm-${LLVM_VERSION}-mutated/llvm/test/Transforms/InstCombine llvm-${LLVM_VERSION}-mutant-tracking/llvm/test/Transforms/InstCombine
+llvm-regression-tests-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin llvm-${LLVM_VERSION}-mutated/llvm/test/Transforms llvm-${LLVM_VERSION}-mutant-tracking/llvm/test/Transforms
 ```
 
 To run many instances in parallel (16):
 
 ```
-for i in `seq 1 16`; do llvm-regression-tests-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin llvm-${LLVM_VERSION}-mutated/llvm/test/Transforms/InstCombine llvm-${LLVM_VERSION}-mutant-tracking/llvm/test/Transforms/InstCombine & done
+for i in `seq 1 16`; do llvm-regression-tests-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin llvm-${LLVM_VERSION}-mutated/llvm/test/Transforms llvm-${LLVM_VERSION}-mutant-tracking/llvm/test/Transforms & done
 ```
 
 To kill them: TODO
