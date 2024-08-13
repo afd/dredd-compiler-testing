@@ -315,7 +315,7 @@ def main():
                     with open(mutant_path / "kill_info.json", "w") as outfile:
                         json.dump({"killing_test": csmith_test_name,
                                    "kill_type": str(mutant_result),
-                                   "kill_timestamp": datetime.datetime.now(),
+                                   "kill_timestamp": str(datetime.datetime.now()),
                                    }, outfile)
                 except FileExistsError:
                     print(f"Mutant {mutant} was independently discovered to be killed.")
