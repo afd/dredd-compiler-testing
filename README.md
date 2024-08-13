@@ -8,7 +8,7 @@ Necessary packages on AWS EC2:
 
 ```
 sudo apt update
-sudo apt install -y python3-pip python3.10-venv unzip zip cmake ninja-build libzstd-dev m4
+sudo apt install -y python3-pip python3.10-venv unzip zip cmake clang-15 ninja-build libzstd-dev m4
 pip3 install --upgrade pip
 pip3 install build
 ```
