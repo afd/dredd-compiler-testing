@@ -1,0 +1,111 @@
+diff --git a/gcc/cp/cfns.h b/gcc/cp/cfns.h
+index 42dd3cfc0..3dc19f27d 100644
+--- a/gcc/cp/cfns.h
++++ b/gcc/cp/cfns.h
+@@ -52,8 +52,12 @@ __inline
+ #endif
+ static unsigned int hash (const char *, unsigned int);
+ #ifdef __GNUC__
++#ifdef __GNUC_STDC_INLINE__
++__attribute__ ((__gnu_inline__))
++#else
+ __inline
+ #endif
++#endif
+ const char * libc_name_p (const char *, unsigned int);
+ /* maximum key range = 391, duplicates = 0 */
+ 
+@@ -123,9 +127,10 @@ hash (register const char *str, register unsigned int len)
+ }
+ 
+ #ifdef __GNUC__
+-__inline
+ #ifdef __GNUC_STDC_INLINE__
+ __attribute__ ((__gnu_inline__))
++#else
++__inline
+ #endif
+ #endif
+ const char *
+diff --git a/gcc/reload1.c b/gcc/reload1.c
+index cbb945d06..c2bae3b6e 100644
+--- a/gcc/reload1.c
++++ b/gcc/reload1.c
+@@ -440,7 +440,7 @@ init_reload (void)
+ 
+   while (memory_address_p (QImode, tem))
+     {
+-      spill_indirect_levels++;
++      spill_indirect_levels = true;
+       tem = gen_rtx_MEM (Pmode, tem);
+     }
+ 
+diff --git a/libgcc/config/i386/linux-unwind.h b/libgcc/config/i386/linux-unwind.h
+index bb40a6590..8d6c4869a 100644
+--- a/libgcc/config/i386/linux-unwind.h
++++ b/libgcc/config/i386/linux-unwind.h
+@@ -58,7 +58,7 @@ x86_64_fallback_frame_state (struct _Unwind_Context *context,
+   if (*(unsigned char *)(pc+0) == 0x48
+       && *(unsigned long long *)(pc+1) == RT_SIGRETURN_SYSCALL)
+     {
+-      struct ucontext *uc_ = context->cfa;
++      ucontext_t *uc_ = context->cfa;
+       /* The void * cast is necessary to avoid an aliasing warning.
+          The aliasing warning is correct, but should not be a problem
+          because it does not alias anything.  */
+@@ -138,7 +138,7 @@ x86_fallback_frame_state (struct _Unwind_Context *context,
+ 	siginfo_t *pinfo;
+ 	void *puc;
+ 	siginfo_t info;
+-	struct ucontext uc;
++	ucontext_t uc;
+       } *rt_ = context->cfa;
+       /* The void * cast is necessary to avoid an aliasing warning.
+          The aliasing warning is correct, but should not be a problem
+diff --git a/libitm/config/linux/rwlock.cc b/libitm/config/linux/rwlock.cc
+index 47a420bda..bd238631a 100644
+--- a/libitm/config/linux/rwlock.cc
++++ b/libitm/config/linux/rwlock.cc
+@@ -156,7 +156,7 @@ gtm_rwlock::write_lock_generic (gtm_thread *tx)
+         continue;
+       // Use a loop here to check reader flags again after waiting.
+       while (it->shared_state.load (memory_order_relaxed)
+-          != ~(typeof it->shared_state)0)
++          != ~(__typeof__ it->shared_state)0)
+ 	{
+ 	  // An active reader. Wait until it has finished. To avoid lost
+ 	  // wake-ups, we need to use Dekker-like synchronization.
+@@ -167,7 +167,7 @@ gtm_rwlock::write_lock_generic (gtm_thread *tx)
+ 	  writer_readers.store (1, memory_order_relaxed);
+ 	  atomic_thread_fence (memory_order_seq_cst);
+ 	  if (it->shared_state.load (memory_order_relaxed)
+-	      != ~(typeof it->shared_state)0)
++	      != ~(__typeof__ it->shared_state)0)
+ 	    futex_wait(&writer_readers, 1);
+ 	  else
+ 	    writer_readers.store (0, memory_order_relaxed);
+diff --git a/libsanitizer/asan/asan_linux.cc b/libsanitizer/asan/asan_linux.cc
+index a030fcd39..3dd3bd63e 100644
+--- a/libsanitizer/asan/asan_linux.cc
++++ b/libsanitizer/asan/asan_linux.cc
+@@ -28,6 +28,7 @@
+ #include <stdio.h>
+ #include <unistd.h>
+ #include <unwind.h>
++#include <signal.h>
+ 
+ #if !ASAN_ANDROID
+ // FIXME: where to get ucontext on Android?
+diff --git a/libsanitizer/tsan/tsan_platform_linux.cc b/libsanitizer/tsan/tsan_platform_linux.cc
+index f7b05f2bf..29c111057 100644
+--- a/libsanitizer/tsan/tsan_platform_linux.cc
++++ b/libsanitizer/tsan/tsan_platform_linux.cc
+@@ -292,7 +292,7 @@ bool IsGlobalVar(uptr addr) {
+ #ifndef TSAN_GO
+ int ExtractResolvFDs(void *state, int *fds, int nfd) {
+   int cnt = 0;
+-  __res_state *statp = (__res_state*)state;
++  struct __res_state *statp = (struct __res_state*)state;
+   for (int i = 0; i < MAXNS && cnt < nfd; i++) {
+     if (statp->_u._ext.nsaddrs[i] && statp->_u._ext.nssocks[i] != -1)
+       fds[cnt++] = statp->_u._ext.nssocks[i];

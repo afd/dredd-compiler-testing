@@ -1,0 +1,16 @@
+diff --git a/include/llvm/ADT/IntrusiveRefCntPtr.h b/include/llvm/ADT/IntrusiveRefCntPtr.h
+index f9df378..848cbfa 100644
+--- a/include/llvm/ADT/IntrusiveRefCntPtr.h
++++ b/include/llvm/ADT/IntrusiveRefCntPtr.h
+@@ -134,9 +134,10 @@ public:
+ //===----------------------------------------------------------------------===//
+   template <typename T>
+   class IntrusiveRefCntPtr {
+-    T* Obj;
+ 
+   public:
++    T* Obj;
++
+     typedef T element_type;
+ 
+     explicit IntrusiveRefCntPtr() : Obj(nullptr) {}

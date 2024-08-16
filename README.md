@@ -8,7 +8,7 @@ Necessary packages on AWS EC2:
 
 ```
 sudo apt update
-sudo apt install -y python3-pip python3.10-venv unzip zip cmake clang-15 ninja-build libzstd-dev m4
+sudo apt install -y python3-pip python3.10-venv unzip zip bear cmake clang-15 ninja-build libzstd-dev m4
 pip3 install --upgrade pip
 pip3 install build
 ```
@@ -24,7 +24,7 @@ export DREDD_EXPERIMENTS_ROOT=${HOME}
 Decide which version of the LLVM project you would like to mutate and put this version in the `LLVM_VERSION` environment variable. E.g.:
 
 ```
-export LLVM_VERSION=17.0.4
+export LLVM_VERSION=3.5.0
 ```
 
 
@@ -59,10 +59,22 @@ cp dredd/build/src/dredd/dredd dredd/third_party/clang+llvm/bin/
 Check out this version of the LLVM project, and keep it as a clean version of the source code (from which versions of the source code to be mutated will be copied):
 
 ```
-cd ${DREDD_EXPERIMENTS_ROOT}
-git clone https://github.com/llvm/llvm-project.git llvm-${LLVM_VERSION}-clean
-pushd llvm-${LLVM_VERSION}-clean
-git checkout llvmorg-${LLVM_VERSION}
+curl -Lo llvm-${LLVM_VERSION}.src.tar.xz https://releases.llvm.org/${LLVM_VERSION}/llvm-${LLVM_VERSION}.src.tar.xz
+tar -xf llvm-${LLVM_VERSION}.src.tar.xz
+rm llvm-${LLVM_VERSION}.src.tar.xz
+mv llvm-${LLVM_VERSION}.src llvm-${LLVM_VERSION}-clean
+
+pushd llvm-${LLVM_VERSION}-clean/tools
+curl -Lo cfe-${LLVM_VERSION}.src.tar.xz https://releases.llvm.org/${LLVM_VERSION}/cfe-${LLVM_VERSION}.src.tar.xz
+tar -xf cfe-${LLVM_VERSION}.src.tar.xz
+rm cfe-${LLVM_VERSION}.src.tar.xz
+mv cfe-${LLVM_VERSION}.src clang
+popd
+```
+Apply patch to the source code to ensure it build with modern compiler:
+```
+pushd llvm-3.5.0-clean
+git apply ../dredd-compiler-testing/llvm.patch
 popd
 ```
 
@@ -79,10 +91,10 @@ Generate a compilation database for each of these copies of LLVM, and build a co
 cd ${DREDD_EXPERIMENTS_ROOT}
 for kind in mutated mutant-tracking
 do
-  SOURCE_DIR=llvm-${LLVM_VERSION}-${kind}/llvm
+  SOURCE_DIR=llvm-${LLVM_VERSION}-${kind}
   BUILD_DIR=llvm-${LLVM_VERSION}-${kind}-build
   mkdir ${BUILD_DIR}
-  cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++
+  cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++
   # Build something minimal to ensure all auto-generated pieces of code are created.
   cmake --build "${BUILD_DIR}" --target all
 done
@@ -94,26 +106,26 @@ Record the location of the `dredd` executable in an environment variable.
 export DREDD_EXECUTABLE=${DREDD_EXPERIMENTS_ROOT}/dredd/third_party/clang+llvm/bin/dredd
 ```
 
-Mutate all `.cpp` files under `InstCombine` in the copy of LLVM designated for mutation:
+Mutate all `.cpp` files under `Transforms` in the copy of LLVM designated for mutation:
 
 ```
 # (Optional) `sort` depend on locale, for reproducibility:
 export LC_ALL=C
 
 cd ${DREDD_EXPERIMENTS_ROOT}
-FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutated/llvm/lib/Transforms/InstCombine/*.cpp | sort))
+FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutated/lib/Transforms/**/*.cpp | sort))
 echo ${FILES[*]}
 ${DREDD_EXECUTABLE} -p llvm-${LLVM_VERSION}-mutated-build/compile_commands.json --mutation-info-file llvm-mutated.json ${FILES_TO_MUTATE[*]}
 ```
 
-Apply mutation tracking to all `.cpp` files under `InstCombine` in the copy of LLVM designated for mutation tracking:
+Apply mutation tracking to all `.cpp` files under `Transforms` in the copy of LLVM designated for mutation tracking:
 
 ```
 # (Optional) `sort` depend on locale, for reproducibility:
 export LC_ALL=C
 
 cd ${DREDD_EXPERIMENTS_ROOT}
-FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutant-tracking/llvm/lib/Transforms/InstCombine/*.cpp | sort))
+FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutant-tracking/lib/Transforms/**/*.cpp | sort))
 echo ${FILES[*]}
 ${DREDD_EXECUTABLE} --only-track-mutant-coverage -p llvm-${LLVM_VERSION}-mutant-tracking-build/compile_commands.json --mutation-info-file llvm-mutant-tracking.json ${FILES_TO_MUTATE[*]}
 ```
@@ -143,12 +155,13 @@ popd
 ## Scripts to figure out which Dredd-induced mutants are killed by the LLVM test suite
 
 ```
-git clone https://github.com/llvm/llvm-test-suite.git
-cd llvm-test-suite
-git checkout llvmorg-${LLVM_VERSION}
-cd ..
-# Make sure that llvm-size is on your path. It is available from the just-built compiler, or from the compiler under dredd's third party directory. TODO: decide which one to use in instructions.
-cmake -G Ninja -S llvm-test-suite -B llvm-test-suite-build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+curl -Lo test-suite-${LLVM_VERSION}.src.tar.xz https://releases.llvm.org/${LLVM_VERSION}/test-suite-${LLVM_VERSION}.src.tar.xz
+tar -xf test-suite-${LLVM_VERSION}.src.tar.xz
+rm test-suite-${LLVM_VERSION}.src.tar.xz
+mv test-suite-${LLVM_VERSION}.src llvm-test-suite
+<!-- # Make sure that llvm-size is on your path. It is available from the just-built compiler, or from the compiler under dredd's third party directory. TODO: decide which one to use in instructions.
+cmake -G Ninja -S llvm-test-suite -B llvm-test-suite-build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -->
+
 ```
 
 You point it at:
@@ -198,13 +211,13 @@ done
 Command to invoke regression test suite runner:
 
 ```
-llvm-regression-tests-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin llvm-${LLVM_VERSION}-mutated/llvm/test/Transforms/InstCombine llvm-${LLVM_VERSION}-mutant-tracking/llvm/test/Transforms/InstCombine
+llvm-regression-tests-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin llvm-${LLVM_VERSION}-mutated/test/Transforms llvm-${LLVM_VERSION}-mutant-tracking/test/Transforms
 ```
 
 To run many instances in parallel (16):
 
 ```
-for i in `seq 1 16`; do llvm-regression-tests-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin llvm-${LLVM_VERSION}-mutated/llvm/test/Transforms/InstCombine llvm-${LLVM_VERSION}-mutant-tracking/llvm/test/Transforms/InstCombine & done
+for i in `seq 1 16`; do llvm-regression-tests-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin llvm-${LLVM_VERSION}-mutated/test/Transforms llvm-${LLVM_VERSION}-mutant-tracking/test/Transforms & done
 ```
 
 To kill them: TODO
