@@ -14,3 +14,203 @@ index f9df378..848cbfa 100644
      typedef T element_type;
  
      explicit IntrusiveRefCntPtr() : Obj(nullptr) {}
+diff --git a/examples/Kaleidoscope/MCJIT/cached/genk-timing.py b/examples/Kaleidoscope/MCJIT/cached/genk-timing.py
+index 96dd6db..8a2273f 100644
+--- a/examples/Kaleidoscope/MCJIT/cached/genk-timing.py
++++ b/examples/Kaleidoscope/MCJIT/cached/genk-timing.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import sys
+ import random
+diff --git a/examples/Kaleidoscope/MCJIT/cached/split-lib.py b/examples/Kaleidoscope/MCJIT/cached/split-lib.py
+index 5cdcc6d..092cefe 100644
+--- a/examples/Kaleidoscope/MCJIT/cached/split-lib.py
++++ b/examples/Kaleidoscope/MCJIT/cached/split-lib.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ class TimingScriptGenerator:
+     """Used to generate a bash script which will invoke the toy and time it"""
+diff --git a/examples/Kaleidoscope/MCJIT/complete/genk-timing.py b/examples/Kaleidoscope/MCJIT/complete/genk-timing.py
+index 72591fe..9461679 100644
+--- a/examples/Kaleidoscope/MCJIT/complete/genk-timing.py
++++ b/examples/Kaleidoscope/MCJIT/complete/genk-timing.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import sys
+ import random
+diff --git a/examples/Kaleidoscope/MCJIT/complete/split-lib.py b/examples/Kaleidoscope/MCJIT/complete/split-lib.py
+index f6bec02..ccb18aa 100644
+--- a/examples/Kaleidoscope/MCJIT/complete/split-lib.py
++++ b/examples/Kaleidoscope/MCJIT/complete/split-lib.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ class TimingScriptGenerator:
+     """Used to generate a bash script which will invoke the toy and time it"""
+diff --git a/examples/Kaleidoscope/MCJIT/lazy/genk-timing.py b/examples/Kaleidoscope/MCJIT/lazy/genk-timing.py
+index 96dd6db..8a2273f 100644
+--- a/examples/Kaleidoscope/MCJIT/lazy/genk-timing.py
++++ b/examples/Kaleidoscope/MCJIT/lazy/genk-timing.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import sys
+ import random
+diff --git a/test/BugPoint/compile-custom.ll.py b/test/BugPoint/compile-custom.ll.py
+index 4b9b30c..203e1c7 100755
+--- a/test/BugPoint/compile-custom.ll.py
++++ b/test/BugPoint/compile-custom.ll.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import sys
+ 
+diff --git a/test/tools/llvm-readobj/Inputs/relocs.py b/test/tools/llvm-readobj/Inputs/relocs.py
+index af9459d..4489dad 100644
+--- a/test/tools/llvm-readobj/Inputs/relocs.py
++++ b/test/tools/llvm-readobj/Inputs/relocs.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ # Generates ELF, COFF and MachO object files for different architectures
+ # containing all relocations:
+diff --git a/utils/Misc/zkill b/utils/Misc/zkill
+index bc0bfd5..e3cd160 100755
+--- a/utils/Misc/zkill
++++ b/utils/Misc/zkill
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import os
+ import re
+diff --git a/utils/Target/ARM/analyze-match-table.py b/utils/Target/ARM/analyze-match-table.py
+index aa952d4..bc40a6f 100644
+--- a/utils/Target/ARM/analyze-match-table.py
++++ b/utils/Target/ARM/analyze-match-table.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ def analyze_match_table(path):
+     # Extract the instruction table.
+diff --git a/utils/clang-parse-diagnostics-file b/utils/clang-parse-diagnostics-file
+index 59b13f3..5e9e4e4 100755
+--- a/utils/clang-parse-diagnostics-file
++++ b/utils/clang-parse-diagnostics-file
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import os
+ import plistlib
+diff --git a/utils/lit/lit.py b/utils/lit/lit.py
+index 851063b..c7e78ce 100755
+--- a/utils/lit/lit.py
++++ b/utils/lit/lit.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ if __name__=='__main__':
+     import lit
+diff --git a/utils/lit/lit/ProgressBar.py b/utils/lit/lit/ProgressBar.py
+index e3644f1..25a0837 100644
+--- a/utils/lit/lit/ProgressBar.py
++++ b/utils/lit/lit/ProgressBar.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ # Source: http://code.activestate.com/recipes/475116/, with
+ # modifications by Daniel Dunbar.
+diff --git a/utils/lit/lit/main.py b/utils/lit/lit/main.py
+index 1f62e35..aa0c076 100755
+--- a/utils/lit/lit/main.py
++++ b/utils/lit/lit/main.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ """
+ lit - LLVM Integrated Tester.
+diff --git a/utils/lit/tests/Inputs/googletest-format/DummySubDir/OneTest b/utils/lit/tests/Inputs/googletest-format/DummySubDir/OneTest
+index 9dff137..8d58584 100755
+--- a/utils/lit/tests/Inputs/googletest-format/DummySubDir/OneTest
++++ b/utils/lit/tests/Inputs/googletest-format/DummySubDir/OneTest
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import sys
+ 
+diff --git a/utils/llvm-build/llvm-build b/utils/llvm-build/llvm-build
+index 7377e3d..7ac5c89 100755
+--- a/utils/llvm-build/llvm-build
++++ b/utils/llvm-build/llvm-build
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import llvmbuild
+ 
+diff --git a/utils/llvm-lit/llvm-lit.in b/utils/llvm-lit/llvm-lit.in
+index fc96202..1ee68ab 100755
+--- a/utils/llvm-lit/llvm-lit.in
++++ b/utils/llvm-lit/llvm-lit.in
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ import os
+ import sys
+diff --git a/utils/release/findRegressions-nightly.py b/utils/release/findRegressions-nightly.py
+index ddf8983..06bcd11 100755
+--- a/utils/release/findRegressions-nightly.py
++++ b/utils/release/findRegressions-nightly.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ import re, string, sys, os, time
+ 
+ DEBUG = 0
+diff --git a/utils/release/findRegressions-simple.py b/utils/release/findRegressions-simple.py
+index 8d3b4cf..6aa2bcc 100755
+--- a/utils/release/findRegressions-simple.py
++++ b/utils/release/findRegressions-simple.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ import re, string, sys, os, time, math
+ 
+ DEBUG = 0
+diff --git a/utils/sort_includes.py b/utils/sort_includes.py
+index fef9755..d8d54c7 100755
+--- a/utils/sort_includes.py
++++ b/utils/sort_includes.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ """Script to sort the top-most block of #include lines.
+ 
+diff --git a/utils/wciia.py b/utils/wciia.py
+index eaa232f..b7b2ac3 100755
+--- a/utils/wciia.py
++++ b/utils/wciia.py
+@@ -1,4 +1,4 @@
+-#!/usr/bin/env python
++#!/usr/bin/env python2.7
+ 
+ """
+ wciia - Whose Code Is It Anyway
