@@ -214,3 +214,17 @@ index eaa232f..b7b2ac3 100755
  
  """
  wciia - Whose Code Is It Anyway
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b9fca2a..d2affa9 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -199,6 +199,9 @@ list(REMOVE_DUPLICATES LLVM_TARGETS_TO_BUILD)
+ 
+ include(AddLLVMDefinitions)
+ 
++# Disable this class of error to enable building with modern compilers.
++add_llvm_definitions( -Wno-narrowing )
++
+ option(LLVM_ENABLE_PIC "Build Position-Independent Code" ON)
+ 
+ # MSVC has a gazillion warnings with this.

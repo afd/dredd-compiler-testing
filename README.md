@@ -8,7 +8,7 @@ Necessary packages on AWS EC2:
 
 ```
 sudo apt update
-sudo apt install -y python3-pip python3.10-venv unzip zip bear cmake clang-15 ninja-build libzstd-dev m4
+sudo apt install -y python3-pip python3.10-venv unzip zip bear cmake clang-15 ninja-build libzstd-dev m4 gcc-multilib python2
 pip3 install --upgrade pip
 pip3 install build
 ```
@@ -71,11 +71,27 @@ rm cfe-${LLVM_VERSION}.src.tar.xz
 mv cfe-${LLVM_VERSION}.src clang
 popd
 ```
-Apply patch to the source code to ensure it build with modern compiler:
+Apply the patch to the source code to ensure it builds with a modern compiler and that some scripts run with the correct version of Python:
 ```
 pushd llvm-3.5.0-clean
 git apply ../dredd-compiler-testing/llvm.patch
 popd
+```
+
+Check out an old version of GCC, apply a patch to ensure it builds with a modern compiler, and then build it. The installation path will serve as the GCC toolchain when building Clang. These steps ensure that Clang can link properly.
+```
+wget ftp://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2
+tar -xvjf gcc-4.8.2.tar.bz2
+cd gcc-4.8.2
+./contrib/download_prerequisites
+git apply ../dredd-compiler-testing/gcc-4.8.2.patch
+cd ..
+mkdir gcc-4.8.2-build
+cd gcc-4.8.2-build
+$PWD/../gcc-4.8.2/configure --prefix=$HOME/toolchains --enable-languages=c,c++
+make -j$(nproc)
+make install
+cd ..
 ```
 
 Now make two copies of the LLVM project--one that will be mutated, and another that will be used for the tracking of covered mutants.
@@ -94,7 +110,7 @@ do
   SOURCE_DIR=llvm-${LLVM_VERSION}-${kind}
   BUILD_DIR=llvm-${LLVM_VERSION}-${kind}-build
   mkdir ${BUILD_DIR}
-  cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++
+  cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++ -DGCC_INSTALL_PREFIX=${HOME}/toolchains
   # Build something minimal to ensure all auto-generated pieces of code are created.
   cmake --build "${BUILD_DIR}" --target all
 done
@@ -159,9 +175,17 @@ curl -Lo test-suite-${LLVM_VERSION}.src.tar.xz https://releases.llvm.org/${LLVM_
 tar -xf test-suite-${LLVM_VERSION}.src.tar.xz
 rm test-suite-${LLVM_VERSION}.src.tar.xz
 mv test-suite-${LLVM_VERSION}.src llvm-test-suite
-<!-- # Make sure that llvm-size is on your path. It is available from the just-built compiler, or from the compiler under dredd's third party directory. TODO: decide which one to use in instructions.
-cmake -G Ninja -S llvm-test-suite -B llvm-test-suite-build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -->
+```
 
+Executing `test-suite` with Makefiles is non-trivial. Instead, we made use of `LNT` testing infrastructure to execute the test, and `bear` to record the compilation database.
+```
+sudo apt install python3-virtualenv bison byacc
+virtualenv ~/mysandbox
+git clone https://github.com/llvm/llvm-lnt.git ~/lnt
+~/mysandbox/bin/python ~/lnt/setup.py develop
+source mysandbox/bin/activate
+bear -- lnt runtest nt --sandbox /tmp/SANDBOX --cc /home/ubuntu/llvm-${LLVM_VERSION}-mutated-build/bin/clang  --test-suite llvm-test-suite -j$(nproc)
+deactivate
 ```
 
 You point it at:
@@ -177,13 +201,13 @@ mutants they kill.
 Command to invoke `llvm-test-suite-runner`:
 
 ```
-llvm-test-suite-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin $(pwd)/llvm-test-suite llvm-test-suite-build/compile_commands.json
+llvm-test-suite-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin $(pwd)/llvm-test-suite $(pwd)/compile_commands.json
 ```
 
 To run many instances in parallel (16):
 
 ```
-for i in `seq 1 16`; do llvm-test-suite-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin $(pwd)/llvm-test-suite llvm-test-suite-build/compile_commands.json & done
+for i in `seq 1 16`; do llvm-test-suite-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin llvm-${LLVM_VERSION}-mutant-tracking-build/bin $(pwd)/llvm-test-suite $(pwd)/compile_commands.json & done
 ```
 
 To kill them:

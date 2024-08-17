@@ -1,32 +1,18 @@
-diff --git a/llvm/utils/lit/lit/TestRunner.py b/llvm/utils/lit/lit/TestRunner.py
-index 24670610e3a5..518437136f53 100644
---- a/llvm/utils/lit/lit/TestRunner.py
-+++ b/llvm/utils/lit/lit/TestRunner.py
-@@ -1122,10 +1122,13 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
+diff --git a/utils/lit/lit/TestRunner.py b/utils/lit/lit/TestRunner.py
+index 9752417..9781771 100644
+--- a/utils/lit/lit/TestRunner.py
++++ b/utils/lit/lit/TestRunner.py
+@@ -296,8 +296,12 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
+             # run on clang with no real loss.
              command = litConfig.valgrindArgs + command
  
-     try:
-+        dredd_env=test.config.environment.copy()
-+        if 'DREDD_MUTANT_TRACKING_FILE' in os.environ:
-+            dredd_env['DREDD_MUTANT_TRACKING_FILE'] = os.environ['DREDD_MUTANT_TRACKING_FILE']
-         out, err, exitCode = lit.util.executeCommand(
-             command,
-             cwd=cwd,
--            env=test.config.environment,
-+            env=dredd_env,
-             timeout=litConfig.maxIndividualTestTime,
-         )
-         return (out, err, exitCode, None)
-diff --git a/llvm/utils/lit/lit/main.py b/llvm/utils/lit/lit/main.py
-index cf9186d528cd..ebf958ebf1d1 100755
---- a/llvm/utils/lit/lit/main.py
-+++ b/llvm/utils/lit/lit/main.py
-@@ -123,7 +123,7 @@ def main(builtin_params={}):
-     run_tests(selected_tests, lit_config, opts, len(discovered_tests))
-     elapsed = time.time() - start
++    dredd_env=test.config.environment.copy()
++    if 'DREDD_MUTANT_TRACKING_FILE' in os.environ:
++        dredd_env['DREDD_MUTANT_TRACKING_FILE'] = os.environ['DREDD_MUTANT_TRACKING_FILE']
++
+     return lit.util.executeCommand(command, cwd=cwd,
+-                                   env=test.config.environment)
++                                   env=dredd_env)
  
--    record_test_times(selected_tests, lit_config)
-+    #record_test_times(selected_tests, lit_config)
- 
-     selected_tests, discovered_tests = GoogleTest.post_process_shard_results(
-         selected_tests, discovered_tests
+ def parseIntegratedTestScriptCommands(source_path):
+     """

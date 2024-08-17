@@ -104,7 +104,7 @@ def main():
             is_c: bool = os.path.splitext(test_filename)[1] == ".c"
 
             compiler_args = []
-            components = test["command"].split(' ')
+            components = test["arguments"]
             index = 0
             while index < len(components):
                 component = components[index]
