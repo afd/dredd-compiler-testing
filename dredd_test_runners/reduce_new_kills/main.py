@@ -5,6 +5,7 @@ import os
 import shutil
 import stat
 import sys
+import subprocess
 
 from dredd_test_runners.common.constants import (DEFAULT_RUNTIME_TIMEOUT,
                                                  MIN_TIMEOUT_FOR_MUTANT_COMPILATION,
@@ -72,16 +73,16 @@ def main():
     reduction_queue.sort()
 
     reductions_dir: Path = work_dir / "reductions"
-    if not work_dir.exists():
-        os.makedirs(reductions_dir)
+    Path(reductions_dir).mkdir(exist_ok=True)
         
     while reduction_queue:
         mutant_to_reduce = reduction_queue.pop(0)
         current_reduction_dir: Path = reductions_dir / str(mutant_to_reduce)
-        if current_reduction_dir.exists():
+        try:
+            current_reduction_dir.mkdir()
+        except FileExistsError:
             print(f"Skipping reduction for mutant {mutant_to_reduce} as {current_reduction_dir} already exists.")
             continue
-        os.makedirs(current_reduction_dir)
 
         print(f"Preparing to reduce mutant {mutant_to_reduce}. Details: {killed_mutant_to_test_info[mutant_to_reduce]}")
 
@@ -107,12 +108,18 @@ def main():
                     dst=current_reduction_dir / 'prog.c')
 
         # 12 hour timeout
-        maybe_result: Optional[ProcessResult] = run_process_with_timeout(
-            cmd=['creduce', 'interesting.py', 'prog.c'],
-            timeout_seconds=43200,
-            cwd=current_reduction_dir)
-        if maybe_result is None:
+        # maybe_result: Optional[ProcessResult] = run_process_with_timeout(
+        #     cmd=['creduce', 'interesting.py', 'prog.c'],
+        #     timeout_seconds=43200,
+        #     cwd=current_reduction_dir)
+        try:
+            creduce_proc = subprocess.run(['creduce', 'interesting.py', 'prog.c'], timeout=43200, cwd=current_reduction_dir)
+        except subprocess.TimeoutExpired:
             print(f"Reduction of {mutant_to_reduce} timed out.")
+        else:
+            if creduce_proc.returncode != 0:
+                 print(f"Reduction of {mutant_to_reduce} failed:")
+
 
         # TODO: Check for additional kills for the reduced program
         # TODO: Emit a summary of the mutants that the reduced program kills
