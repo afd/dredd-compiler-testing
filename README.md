@@ -209,6 +209,11 @@ cmake -S csmith -B csmith/build -G Ninja
 cmake --build csmith/build
 ```
 
+`csmith-runner` and `reduce-new-kills` both use `clang-15`'s sanitiser, which might not work on newer Linux distros. A workaround for this issue is to reduce ASLR entropy:
+```
+sudo sysctl vm.mmap_rnd_bits=28
+```
+
 ```
 csmith-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin/clang llvm-${LLVM_VERSION}-mutant-tracking-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/csmith
 ```
@@ -236,8 +241,18 @@ analyse-results work
 ```
 
 # Reductions
+Install `creduce` and `gcc-12`:
+```
+sudo apt install creduce gcc-12
+```
 
 ```
 cd ${DREDD_EXPERIMENTS_ROOT}
 reduce-new-kills work ${DREDD_EXPERIMENTS_ROOT}/llvm-${LLVM_VERSION}-mutated-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/csmith
+```
+
+To run many instances in parallel (16):
+
+```
+for i in `seq 1 16`; do reduce-new-kills work ${DREDD_EXPERIMENTS_ROOT}/llvm-${LLVM_VERSION}-mutated-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/csmith & done
 ```
