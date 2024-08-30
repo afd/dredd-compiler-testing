@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+# Interestingness test for miscompilations
+
 import filecmp
 import os
 import re
@@ -88,7 +90,7 @@ try:
                                         {{timeout_multiplier_for_mutant_compilation}} * (compile_end - compile_start)),
                             env=dredd_environment)
     if result.returncode != 0:
-        # Compilation with the mutated file failed, which is not
+        # Compilation with the mutated compiler failed, which is not
         # interesting as we are looking for a mutation-induced
         # miscompilation
         sys.exit(6)
