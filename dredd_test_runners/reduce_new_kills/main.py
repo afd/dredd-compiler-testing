@@ -140,7 +140,7 @@ def main():
 
         # Store reduction information
         with open(os.path.join(current_reduction_dir, 'reduction_summary.json'), 'w') as summary_file:
-            json.dump({"test": test,
+            json.dump({"test": test.name,
                        "reduction_summary": reduction_summary,
                        "reduction_start_time": str(reduction_start_time),
                        "reduction_end_time": str(reduction_end_time),
