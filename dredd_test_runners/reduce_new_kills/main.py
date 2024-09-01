@@ -47,9 +47,11 @@ def main():
     killed_mutant_to_test_info: Dict[int, Dict] = {}
 
     # Figure out all the tests that have killed mutants in ways for which reduction is
-    # actionable. The reason for determining all such tests upfront is that when we reduce one
-    # such test, we can quickly see whether it kills any of the mutants killed by the other
-    # tests, avoiding the need to reduce those tests too if so.
+    # actionable. A reason for determining all such tests upfront is that after we reduce one
+    # such test, it would be possible to see whether it kills any of the mutants killed by the other
+    # tests, avoiding the need to reduce those tests too if so. (However, this is not implemented at
+    # present and it may prove simpler to do all of the reductions and subsequently address
+    # redundancy.)
     for test in tests_dir.glob('*'):
         if not test.is_dir():
             continue
@@ -64,9 +66,9 @@ def main():
             kill_type: str = mutant_summary['kill_type']
             if (kill_type == 'KillStatus.KILL_DIFFERENT_STDOUT'
                     or kill_type == 'KillStatus.KILL_RUNTIME_TIMEOUT'
-                    or kill_type == 'KillStatus.KILL_DIFFERENT_EXIT_CODES'):
-                # This is an actionable kill: the mutated compiler produces a compilable program
-                # that runs, but that deviates from the expected result at runtime.
+                    or kill_type == 'KillStatus.KILL_DIFFERENT_EXIT_CODES'
+                    or kill_type == 'KillStatus.KILL_COMPILER_CRASH'):
+                # Test case reduction may be feasible and useful for this kill.
                 killed_mutant_to_test_info[mutant] = mutant_summary
     
     reduction_queue: List[int] = list(killed_mutant_to_test_info.keys())
@@ -84,11 +86,18 @@ def main():
             print(f"Skipping reduction for mutant {mutant_to_reduce} as {current_reduction_dir} already exists.")
             continue
 
-        print(f"Preparing to reduce mutant {mutant_to_reduce}. Details: {killed_mutant_to_test_info[mutant_to_reduce]}")
+        mutant_summary = killed_mutant_to_test_info[mutant_to_reduce]
+
+        print(f"Preparing to reduce mutant {mutant_to_reduce}. Details: {mutant_summary}")
+
+        interestingness_test_template_file = \
+            "interesting_crash.py.template"\
+            if mutant_summary['kill_type'] == 'KillStatus.KILL_COMPILER_CRASH'\
+            else "interesting_miscompilation.py.template"
 
         interestingness_test_template = jinja2.Environment(
             loader=jinja2.FileSystemLoader(
-                searchpath=os.path.dirname(os.path.realpath(__file__)))).get_template("interesting.py.template")
+                searchpath=os.path.dirname(os.path.realpath(__file__)))).get_template(interestingness_test_template_file)
         open(current_reduction_dir / 'interesting.py', 'w').write(interestingness_test_template.render(
             program_to_check="prog.c",
             mutated_compiler_executable=args.mutated_compiler_executable,
@@ -119,12 +128,6 @@ def main():
         else:
             if creduce_proc.returncode != 0:
                  print(f"Reduction of {mutant_to_reduce} failed:")
-
-
-        # TODO: Check for additional kills for the reduced program
-        # TODO: Emit a summary of the mutants that the reduced program kills
-        # TODO: Look into potential for automated cleanup of reduced program, e.g. to use standard data types or to
-        #       be better formatted.
 
 
 if __name__ == '__main__':
