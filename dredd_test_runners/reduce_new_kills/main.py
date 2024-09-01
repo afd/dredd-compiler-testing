@@ -6,7 +6,7 @@ import shutil
 import stat
 import sys
 import subprocess
-import time
+import datetime
 
 from dredd_test_runners.common.constants import (DEFAULT_RUNTIME_TIMEOUT,
                                                  MIN_TIMEOUT_FOR_MUTANT_COMPILATION,
@@ -118,7 +118,7 @@ def main():
                     dst=current_reduction_dir / 'prog.c')
 
         # Run creduce with 12 hour timeout and store in logfile
-        reduction_start_time: float = time.time()
+        reduction_start_time: datetime.datetime = datetime.datetime.now()
         reduction_status = ""
         with open(os.path.join(current_reduction_dir, 'reduction_log.txt'), 'wb') as logfile:
             try:
@@ -126,22 +126,21 @@ def main():
                                               cwd=current_reduction_dir, stdout=logfile, stderr=logfile)
                 if creduce_proc.returncode != 0:
                     print(f"Reduction of {mutant_to_reduce} failed with exit code {creduce_proc.returncode}")
-                    reduction_summary = "FAILED"
+                    reduction_status = "FAILED"
                 else:
                     print(f"Reduction of {mutant_to_reduce} succeed.")
-                    reduction_summary = "SUCCESS"
+                    reduction_status = "SUCCESS"
             except subprocess.TimeoutExpired:
                 print(f"Reduction of {mutant_to_reduce} timed out.")
-                reduction_summary = "TIMEOUT"
+                reduction_status = "TIMEOUT"
             except Exception as exp:
                 print(f"Reduction of {mutant_to_reduce} failed with an exception: {exp}")
                 reduction_summary = "EXCPETION"
-        reduction_end_time: float = time.time()
+        reduction_end_time: datetime.datetime = datetime.datetime.now()
 
         # Store reduction information
         with open(os.path.join(current_reduction_dir, 'reduction_summary.json'), 'w') as summary_file:
-            json.dump({"test": test.name,
-                       "reduction_summary": reduction_summary,
+            json.dump({"reduction_status": reduction_status,
                        "reduction_start_time": str(reduction_start_time),
                        "reduction_end_time": str(reduction_end_time),
                        }, summary_file)
