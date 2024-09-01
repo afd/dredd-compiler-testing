@@ -6,6 +6,7 @@ import shutil
 import stat
 import sys
 import subprocess
+import time
 
 from dredd_test_runners.common.constants import (DEFAULT_RUNTIME_TIMEOUT,
                                                  MIN_TIMEOUT_FOR_MUTANT_COMPILATION,
@@ -116,18 +117,34 @@ def main():
         shutil.copy(src=tests_dir / killed_mutant_to_test_info[mutant_to_reduce]['killing_test'] / 'prog.c',
                     dst=current_reduction_dir / 'prog.c')
 
-        # 12 hour timeout
-        # maybe_result: Optional[ProcessResult] = run_process_with_timeout(
-        #     cmd=['creduce', 'interesting.py', 'prog.c'],
-        #     timeout_seconds=43200,
-        #     cwd=current_reduction_dir)
-        try:
-            creduce_proc = subprocess.run(['creduce', 'interesting.py', 'prog.c'], timeout=43200, cwd=current_reduction_dir)
-        except subprocess.TimeoutExpired:
-            print(f"Reduction of {mutant_to_reduce} timed out.")
-        else:
-            if creduce_proc.returncode != 0:
-                 print(f"Reduction of {mutant_to_reduce} failed:")
+        # Run creduce with 12 hour timeout and store in logfile
+        reduction_start_time: float = time.time()
+        reduction_status = ""
+        with open(os.path.join(current_reduction_dir, 'reduction_log.txt'), 'wb') as logfile:
+            try:
+                creduce_proc = subprocess.run(['creduce', 'interesting.py', 'prog.c'], timeout=43200,
+                                              cwd=current_reduction_dir, stdout=logfile, stderr=logfile)
+                if creduce_proc.returncode != 0:
+                    print(f"Reduction of {mutant_to_reduce} failed with exit code {creduce_proc.returncode}")
+                    reduction_summary = "FAILED"
+                else:
+                    print(f"Reduction of {mutant_to_reduce} succeed.")
+                    reduction_summary = "SUCCESS"
+            except subprocess.TimeoutExpired:
+                print(f"Reduction of {mutant_to_reduce} timed out.")
+                reduction_summary = "TIMEOUT"
+            except Exception as exp:
+                print(f"Reduction of {mutant_to_reduce} failed with an exception: {exp}")
+                reduction_summary = "EXCPETION"
+        reduction_end_time: float = time.time()
+
+        # Store reduction information
+        with open(os.path.join(current_reduction_dir, 'reduction_summary.json'), 'w') as summary_file:
+            json.dump({"test": test,
+                       "reduction_summary": reduction_summary,
+                       "reduction_start_time": str(reduction_start_time),
+                       "reduction_end_time": str(reduction_end_time),
+                       }, summary_file)
 
 
 if __name__ == '__main__':
