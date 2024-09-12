@@ -62,7 +62,7 @@ def main():
         mutant_exe_path: Path = Path(temp_dir_for_generated_code, '__mutant_exe')
 
         killed_mutants: Set[int] = set()
-        unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations))
+        unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations+1))
 
         # Make a work directory in which information about the mutant killing process will be stored. If this already
         # exists that's OK - there may be other processes working on mutant killing, or we may be continuing a job that
@@ -97,6 +97,12 @@ def main():
                 print("Skipping test " + test_filename + " as a directory for it already exists")
                 continue
 
+            if test_filename.endswith("SingleSource/Regression/C++/EH/ConditionalExpr.cpp") or \
+                test_filename.endswith("SingleSource/Regression/C++/EH/ctor_dtor_count-2.cpp") or \
+                test_filename.endswith("SingleSource/Regression/C++/EH/function_try_block.cpp"):
+                print("Skipping test " + test_filename + " as it is known to fail due to difference with reference output")
+                continue
+
             print("Analysing kills for test " + test_filename)
             print("Remaining unkilled mutants: " + str(len(unkilled_mutants)))
             print("Mutants killed so far:       " + str(len(killed_mutants)))
@@ -104,7 +110,7 @@ def main():
             is_c: bool = os.path.splitext(test_filename)[1] == ".c"
 
             compiler_args = []
-            components = test["command"].split(' ')
+            components = test["arguments"]
             index = 0
             while index < len(components):
                 component = components[index]
@@ -114,7 +120,7 @@ def main():
                     index += 2
                     continue
                 if component.startswith('-I') or component.startswith('-D') or component.startswith(
-                        '-w') or component.startswith('-W') or component.startswith('-O'):
+                        '-w') or component.startswith('-W') or component.startswith('-O') or component == '-fPIC':
                     compiler_args.append(component)
                 index += 1
             compiler_args.append(test_filename)

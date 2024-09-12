@@ -1,0 +1,80 @@
+diff --git a/gcc/collect2.c b/gcc/collect2.c
+index 33206f5c..79091937 100644
+--- a/gcc/collect2.c
++++ b/gcc/collect2.c
+@@ -1534,7 +1534,7 @@ collect_execute (const char *prog, char **argv, const char *redir)
+   if (redir)
+     {
+       /* Open response file.  */
+-      redir_handle = open (redir, O_WRONLY | O_TRUNC | O_CREAT);
++      redir_handle = open (redir, O_WRONLY | O_TRUNC | O_CREAT, 0666);
+ 
+       /* Duplicate the stdout and stderr file handles
+ 	 so they can be restored later.  */
+diff --git a/gcc/config/i386/linux.h b/gcc/config/i386/linux.h
+index e7d19ec1..b437e5bc 100644
+--- a/gcc/config/i386/linux.h
++++ b/gcc/config/i386/linux.h
+@@ -235,10 +235,10 @@ Boston, MA 02111-1307, USA.  */
+       {									\
+ 	struct rt_sigframe {						\
+ 	  int sig;							\
+-	  struct siginfo *pinfo;					\
++	  siginfo_t *pinfo;					\
+ 	  void *puc;							\
+-	  struct siginfo info;						\
+-	  struct ucontext uc;						\
++	  siginfo_t info;						\
++	  ucontext_t uc;						\
+ 	} *rt_ = (CONTEXT)->cfa;					\
+ 	sc_ = (struct sigcontext *) &rt_->uc.uc_mcontext;		\
+       }									\
+diff --git a/gcc/config/i386/linux64.h b/gcc/config/i386/linux64.h
+index 98536c19..31f0f0ee 100644
+--- a/gcc/config/i386/linux64.h
++++ b/gcc/config/i386/linux64.h
+@@ -90,7 +90,7 @@ Boston, MA 02111-1307, USA.  */
+     if (*(unsigned char *)(pc_+0) == 0x48				\
+ 	&& *(unsigned long *)(pc_+1) == 0x050f0000000fc0c7)		\
+       {									\
+-	struct ucontext *uc_ = (CONTEXT)->cfa;				\
++	ucontext_t *uc_ = (CONTEXT)->cfa;				\
+ 	sc_ = (struct sigcontext *) &uc_->uc_mcontext;			\
+       }									\
+     else								\
+@@ -157,10 +157,10 @@ Boston, MA 02111-1307, USA.  */
+       {									\
+ 	struct rt_sigframe {						\
+ 	  int sig;							\
+-	  struct siginfo *pinfo;					\
++	  siginfo_t *pinfo;					\
+ 	  void *puc;							\
+-	  struct siginfo info;						\
+-	  struct ucontext uc;						\
++	  siginfo_t info;						\
++	  ucontext_t uc;						\
+ 	} *rt_ = (CONTEXT)->cfa;					\
+ 	sc_ = (struct sigcontext *) &rt_->uc.uc_mcontext;		\
+       }									\
+diff --git a/gcc/config/ia64/linux.h b/gcc/config/ia64/linux.h
+index 5c73b0c2..9a6a4f7a 100644
+--- a/gcc/config/ia64/linux.h
++++ b/gcc/config/ia64/linux.h
+@@ -77,7 +77,7 @@ do {						\
+       struct sigframe {							\
+ 	char scratch[16];						\
+ 	unsigned long sig_number;					\
+-	struct siginfo *info;						\
++	siginfo_t *info;						\
+ 	struct sigcontext *sc;						\
+       } *frame_ = (struct sigframe *)(CONTEXT)->psp;			\
+       struct sigcontext *sc_ = frame_->sc;				\
+@@ -150,7 +150,7 @@ do {						\
+       struct sigframe {							\
+ 	char scratch[16];						\
+ 	unsigned long sig_number;					\
+-	struct siginfo *info;						\
++	siginfo_t *info;						\
+ 	struct sigcontext *sc;						\
+       } *frame_ = (struct sigframe *)(CONTEXT)->psp;			\
+       struct sigcontext *sc_ = frame_->sc;				\

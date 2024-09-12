@@ -110,7 +110,7 @@ def main():
         msan_compiled_exe = Path(temp_dir_for_generated_code, '__msan.exe')
 
         killed_mutants: Set[int] = set()
-        unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations))
+        unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations+1))
 
         # Make a work directory in which information about the mutant killing process will be stored. If this already
         # exists that's OK - there may be other processes working on mutant killing, or we may be continuing a job that
@@ -155,6 +155,7 @@ def main():
                              args.csmith_root / "runtime",
                              "-I",
                              args.csmith_root / "build" / "runtime",
+                             "-fPIC",
                              csmith_generated_program]
 
             # Compile the program without mutation.

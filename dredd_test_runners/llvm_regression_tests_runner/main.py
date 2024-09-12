@@ -4,6 +4,8 @@ import os
 import tempfile
 import time
 import datetime
+import shutil
+import subprocess
 
 from enum import Enum
 from pathlib import Path
@@ -65,7 +67,14 @@ def main():
         dredd_covered_mutants_path: Path = Path(temp_dir_for_generated_code, '__dredd_covered_mutants')
 
         killed_mutants: Set[int] = set()
-        unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations))
+        unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations+1))
+
+        # Make a copy of mutated-compiler's build directory and mutant-tracking-compiler's build directory.
+        # This is necessary as running `make check` concurrently will lead to timeout likely due to contention
+        mutated_compiler_build_dir: Path = Path(temp_dir_for_generated_code, '__mutated_compiler_build_dir')
+        mutant_tracking_compiler_build_dir: Path = Path(temp_dir_for_generated_code, '__mutant_tracking_compiler_build_dir')
+        shutil.copytree(args.mutated_compiler_bin_dir, mutated_compiler_build_dir)
+        shutil.copytree(args.mutant_tracking_compiler_bin_dir, mutant_tracking_compiler_build_dir)
 
         # Make a work directory in which information about the mutant killing process will be stored. If this already
         # exists that's OK - there may be other processes working on mutant killing, or we may be continuing a job that
@@ -104,11 +113,12 @@ def main():
 
             test_time_start: float = time.time()
             test_result: ProcessResult = run_process_with_timeout(
-                cmd=[args.mutated_compiler_bin_dir / "llvm-lit",
-                     test_filename],
+                cmd=["make", f"TESTONE=Transforms/{test_filename_without_prefix}", "check-one"],
+                cwd=mutated_compiler_build_dir,
                 timeout_seconds=60)
             test_time_end: float = time.time()
             test_time = test_time_end - test_time_start
+
             if test_result.returncode != 0:
                 print(f"Skipping test {test_filename} as it returned non-zero result {test_result.returncode}.")
                 print(f"stdout: {test_result.stdout}")
@@ -125,14 +135,12 @@ def main():
 
             tracking_environment: Dict[AnyStr, AnyStr] = os.environ.copy()
             tracking_environment["DREDD_MUTANT_TRACKING_FILE"] = str(dredd_covered_mutants_path)
-            test_in_mutant_tracking_build = str(args.regression_tests_mutant_tracking_root) + test_filename[len(str(
-                args.regression_tests_root)):]
-            mutant_tracking_cmd = [str(args.mutant_tracking_compiler_bin_dir / "llvm-lit"),
-                                   test_in_mutant_tracking_build]
+            mutant_tracking_cmd = ["make", f"TESTONE=Transforms/{test_filename_without_prefix}", "check-one"]
             mutant_tracking_result: ProcessResult = run_process_with_timeout(cmd=mutant_tracking_cmd,
+                                                                             cwd=mutant_tracking_compiler_build_dir,
                                                                              timeout_seconds=60,
                                                                              env=tracking_environment)
-            if mutant_tracking_result.returncode != 0:
+            if mutant_tracking_result.returncode != 0 or "PASS" not in mutant_tracking_result.stdout.decode('utf-8'):
                 print(
                     f"Warning: skipping test {test_filename} "
                     f"as the regular and mutant-tracking compilers yield different results")
@@ -166,14 +174,14 @@ def main():
                 mutated_environment = os.environ.copy()
                 mutated_environment["DREDD_ENABLED_MUTATION"] = str(mutant)
                 mutated_test_result: ProcessResult = run_process_with_timeout(
-                    cmd=[args.mutated_compiler_bin_dir / "llvm-lit",
-                         test_filename],
+                    cmd=["make", f"TESTONE=Transforms/{test_filename_without_prefix}", "check-one"],
+                    cwd=mutated_compiler_build_dir,
                     timeout_seconds=int(max(1.0, 5.0 * test_time)),
                     env=mutated_environment)
 
                 if mutated_test_result is None:
                     mutant_result = KillStatus.KILL_TIMEOUT
-                elif mutated_test_result.returncode != 0:
+                elif mutated_test_result.returncode != 0 or "PASS" not in mutated_test_result.stdout.decode('utf-8'):
                     mutant_result = KillStatus.KILL_FAIL
                 else:
                     mutant_result = KillStatus.SURVIVED

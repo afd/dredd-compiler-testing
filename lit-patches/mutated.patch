@@ -1,32 +1,31 @@
-diff --git a/llvm/utils/lit/lit/TestRunner.py b/llvm/utils/lit/lit/TestRunner.py
-index 24670610e3a5..73b3f8396ac2 100644
---- a/llvm/utils/lit/lit/TestRunner.py
-+++ b/llvm/utils/lit/lit/TestRunner.py
-@@ -1122,10 +1122,13 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
-             command = litConfig.valgrindArgs + command
+diff --git a/utils/lit/lit/TestRunner.py b/utils/lit/lit/TestRunner.py
+index a7de2b7..a7303e1 100644
+--- a/utils/lit/lit/TestRunner.py
++++ b/utils/lit/lit/TestRunner.py
+@@ -274,8 +274,12 @@ def executeTclScriptInternal(test, litConfig, tmpBase, commands, cwd):
+             return '', '', 0
  
-     try:
+         command = [litConfig.getBashPath(), script]
++
 +        dredd_env=test.config.environment.copy()
 +        if 'DREDD_ENABLED_MUTATION' in os.environ:
 +            dredd_env['DREDD_ENABLED_MUTATION'] = os.environ['DREDD_ENABLED_MUTATION']
-         out, err, exitCode = lit.util.executeCommand(
-             command,
-             cwd=cwd,
--            env=test.config.environment,
-+            env=dredd_env,
-             timeout=litConfig.maxIndividualTestTime,
-         )
-         return (out, err, exitCode, None)
-diff --git a/llvm/utils/lit/lit/main.py b/llvm/utils/lit/lit/main.py
-index cf9186d528cd..ebf958ebf1d1 100755
---- a/llvm/utils/lit/lit/main.py
-+++ b/llvm/utils/lit/lit/main.py
-@@ -123,7 +123,7 @@ def main(builtin_params={}):
-     run_tests(selected_tests, lit_config, opts, len(discovered_tests))
-     elapsed = time.time() - start
+         out,err,exitCode = executeCommand(command, cwd=cwd,
+-                                          env=test.config.environment)
++                                          env=dredd_env)
  
--    record_test_times(selected_tests, lit_config)
-+    #record_test_times(selected_tests, lit_config)
+         # Tcl commands fail on standard error output.
+         if err:
+@@ -334,7 +338,11 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
  
-     selected_tests, discovered_tests = GoogleTest.post_process_shard_results(
-         selected_tests, discovered_tests
+             command = valgrindArgs + command
+ 
+-    return executeCommand(command, cwd=cwd, env=test.config.environment)
++    dredd_env=test.config.environment.copy()
++    if 'DREDD_ENABLED_MUTATION' in os.environ:
++        dredd_env['DREDD_ENABLED_MUTATION'] = os.environ['DREDD_ENABLED_MUTATION']
++
++    return executeCommand(command, cwd=cwd, env=dredd_env)
+ 
+ def isExpectedFail(xfails, xtargets, target_triple):
+     # Check if any xfail matches this target.

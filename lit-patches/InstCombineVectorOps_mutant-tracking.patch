@@ -1,0 +1,22 @@
+diff --git a/lib/Transforms/InstCombine/InstCombineVectorOps.cpp b/lib/Transforms/InstCombine/InstCombineVectorOps.cpp
+index beeb7d5..661f61d 100644
+--- a/lib/Transforms/InstCombine/InstCombineVectorOps.cpp
++++ b/lib/Transforms/InstCombine/InstCombineVectorOps.cpp
+@@ -392,7 +392,7 @@ static Value *FindScalarElement(Value *V, unsigned EltNo) {
+   __dredd_record_covered_mutants(442, 1); if (ShuffleVectorInst *SVI = dyn_cast<ShuffleVectorInst>(V)) {
+     unsigned LHSWidth =
+     __dredd_replace_expr_unsigned_int([&]() -> unsigned int { return static_cast<unsigned int>(__dredd_replace_expr_unsigned_int([&]() -> unsigned int { return static_cast<unsigned int>(cast<VectorType>(SVI->getOperand(__dredd_replace_expr_unsigned_int_zero(0, 340))->getType())->getNumElements()); }, 342)); }, 346);
+-    unsigned InEl = __dredd_replace_expr_unsigned_int([&]() -> unsigned int { return static_cast<unsigned int>(__dredd_replace_expr_unsigned_int([&]() -> unsigned int { return static_cast<unsigned int>(__dredd_replace_expr_unsigned_int_lvalue([&]() -> unsigned int& { return static_cast<unsigned int&>(getShuffleMask(SVI)[__dredd_replace_expr_unsigned_long(__dredd_replace_expr_unsigned_int_lvalue(EltNo, 350), 352)]); }, 356)); }, 358)); }, 362);
++    unsigned InEl = getShuffleMask(SVI)[EltNo];
+     __dredd_record_covered_mutants(441, 1); if (__dredd_replace_expr_bool_omit_true(__dredd_replace_binary_operator_LT_arg1_unsigned_int_arg2_unsigned_int(__dredd_replace_expr_unsigned_int(__dredd_replace_expr_unsigned_int_lvalue(InEl, 366), 368) , __dredd_replace_expr_unsigned_int(__dredd_replace_expr_unsigned_int_lvalue(LHSWidth, 372), 374), 378), 380))
+       return FindScalarElement(SVI->getOperand(__dredd_replace_expr_unsigned_int_zero(0, 381)), __dredd_replace_expr_unsigned_int(__dredd_replace_expr_unsigned_int_lvalue(InEl, 383), 385));
+     else if (__dredd_replace_expr_bool_omit_true(__dredd_replace_binary_operator_LT_arg1_unsigned_int_arg2_unsigned_int(__dredd_replace_expr_unsigned_int(__dredd_replace_expr_unsigned_int_lvalue(InEl, 389), 391) , __dredd_replace_expr_unsigned_int(__dredd_replace_binary_operator_Mul_arg1_unsigned_int_arg2_unsigned_int(__dredd_replace_expr_unsigned_int(__dredd_replace_expr_unsigned_int_lvalue(LHSWidth, 395), 397),__dredd_replace_expr_unsigned_int_constant(2, 401), 404), 410), 414), 416))
+@@ -497,7 +497,7 @@ Instruction *InstCombiner::visitExtractElementInst(ExtractElementInst &EI) {
+       // If this is extracting an element from a shufflevector, figure out where
+       // it came from and extract from the appropriate input element instead.
+       __dredd_record_covered_mutants(775, 1); if (ConstantInt *Elt = dyn_cast<ConstantInt>(EI.getOperand(__dredd_replace_expr_unsigned_int_one(1, 674)))) {
+-        unsigned SrcIdx = __dredd_replace_expr_unsigned_int([&]() -> unsigned int { return static_cast<unsigned int>(__dredd_replace_expr_unsigned_int([&]() -> unsigned int { return static_cast<unsigned int>(__dredd_replace_expr_unsigned_int_lvalue([&]() -> unsigned int& { return static_cast<unsigned int&>(getShuffleMask(SVI)[__dredd_replace_expr_unsigned_long([&]() -> unsigned long { return static_cast<unsigned long>(Elt->getZExtValue()); }, 676)]); }, 680)); }, 682)); }, 686);
++        unsigned SrcIdx = getShuffleMask(SVI)[Elt->getZExtValue()];
+         Value *Src;
+         unsigned LHSWidth =
+         __dredd_replace_expr_unsigned_int([&]() -> unsigned int { return static_cast<unsigned int>(__dredd_replace_expr_unsigned_int([&]() -> unsigned int { return static_cast<unsigned int>(cast<VectorType>(SVI->getOperand(__dredd_replace_expr_unsigned_int_zero(0, 690))->getType())->getNumElements()); }, 692)); }, 696);
