@@ -6,6 +6,7 @@ import shutil
 import stat
 import sys
 import subprocess
+import signal
 import datetime
 
 from dredd_test_runners.common.constants import (DEFAULT_RUNTIME_TIMEOUT,
@@ -122,8 +123,10 @@ def main():
         reduction_status = ""
         with open(os.path.join(current_reduction_dir, 'reduction_log.txt'), 'wb') as logfile:
             try:
-                creduce_proc = subprocess.run(['creduce', 'interesting.py', 'prog.c'], timeout=43200,
-                                              cwd=current_reduction_dir, stdout=logfile, stderr=logfile)
+                creduce_proc = subprocess.Popen(['creduce', 'interesting.py', 'prog.c'],
+                                              cwd=current_reduction_dir, stdout=logfile, stderr=logfile,
+                                              start_new_session=True)
+                creduce_proc.wait(timeout=43200)
                 if creduce_proc.returncode != 0:
                     print(f"Reduction of {mutant_to_reduce} failed with exit code {creduce_proc.returncode}")
                     reduction_status = "FAILED"
@@ -133,9 +136,11 @@ def main():
             except subprocess.TimeoutExpired:
                 print(f"Reduction of {mutant_to_reduce} timed out.")
                 reduction_status = "TIMEOUT"
+                os.killpg(os.getpgid(creduce_proc.pid), signal.SIGTERM)
             except Exception as exp:
                 print(f"Reduction of {mutant_to_reduce} failed with an exception: {exp}")
                 reduction_summary = "EXCPETION"
+                os.killpg(os.getpgid(creduce_proc.pid), signal.SIGTERM)
         reduction_end_time: datetime.datetime = datetime.datetime.now()
 
         # Store reduction information
