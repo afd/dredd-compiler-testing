@@ -109,7 +109,8 @@ def main():
             timeout_multiplier_for_mutant_compilation=TIMEOUT_MULTIPLIER_FOR_MUTANT_COMPILATION,
             min_timeout_for_mutant_execution=MIN_TIMEOUT_FOR_MUTANT_EXECUTION,
             timeout_multiplier_for_mutant_execution=TIMEOUT_MULTIPLIER_FOR_MUTANT_EXECUTION,
-            default_runtime_timeout=DEFAULT_RUNTIME_TIMEOUT
+            default_runtime_timeout=DEFAULT_RUNTIME_TIMEOUT,
+            csmith_original_warnings_dir=os.path.abspath(current_reduction_dir)
         ))
 
         # Make the interestingness test executable.
