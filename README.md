@@ -8,7 +8,7 @@ Necessary packages on AWS EC2:
 
 ```
 sudo apt update
-sudo apt install -y python3-pip python3.10-venv unzip zip cmake clang-15 ninja-build libzstd-dev m4
+sudo apt install -y python3-pip python3.10-venv unzip zip cmake clang-15 ninja-build libzstd-dev m4 bear texinfo automake
 pip3 install --upgrade pip
 pip3 install build
 ```
@@ -21,10 +21,10 @@ Decide where the root of the experiments should be. Everything that follows will
 export DREDD_EXPERIMENTS_ROOT=${HOME}
 ```
 
-Decide which version of the LLVM project you would like to mutate and put this version in the `LLVM_VERSION` environment variable. E.g.:
+Decide which version of the gcc you would like to mutate and put this version in the `GCC_VERSION` environment variable. E.g.:
 
 ```
-export LLVM_VERSION=17.0.4
+export GCC_VERSION=14.1.0
 ```
 
 
@@ -48,37 +48,44 @@ cp dredd/build/src/dredd/dredd dredd/third_party/clang+llvm/bin/
 ```
 
 
-## Build mutated versions of clang
+## Build mutated versions of gcc
 
-Check out this version of the LLVM project, and keep it as a clean version of the source code (from which versions of the source code to be mutated will be copied):
+Check out this version of the gcc, download prerequisites, and keep it as a clean version of the source code (from which versions of the source code to be mutated will be copied):
 
 ```
 cd ${DREDD_EXPERIMENTS_ROOT}
-git clone https://github.com/llvm/llvm-project.git llvm-${LLVM_VERSION}-clean
-pushd llvm-${LLVM_VERSION}-clean
-git checkout llvmorg-${LLVM_VERSION}
+git clone git://gcc.gnu.org/git/gcc.git gcc-${GCC_VERSION}-clean
+pushd gcc-${LLVM_VERSION}-clean
+git checkout releases/gcc-${LLVM_VERSION}
+./contrib/download_prerequisites
 popd
+
+sudo apt-get install flex
+sudo apt-get install g++-multilib
 ```
 
-Now make two copies of the LLVM project--one that will be mutated, and another that will be used for the tracking of covered mutants.
+Now make two copies of the gcc --one that will be mutated, and another that will be used for the tracking of covered mutants.
 
 ```
-cp -r llvm-${LLVM_VERSION}-clean llvm-${LLVM_VERSION}-mutated
-cp -r llvm-${LLVM_VERSION}-clean llvm-${LLVM_VERSION}-mutant-tracking
+cp -r gcc-${GCC_VERSION}-clean gcc-${GCC_VERSION}-mutated
+cp -r gcc-${GCC_VERSION}-clean gcc-${GCC_VERSION}-mutant-tracking
 ```
 
-Generate a compilation database for each of these copies of LLVM, and build a core component so that all auto-generated code is in place for Dredd.
+Generate a compilation database for each of these copies of gcc, and build it on bear so we have a compilation database available in each build root for Dredd. 
+
+Bear is known to get ["stuck"](https://github.com/rizsotto/Bear/issues/443) when the number of concurrent build `-j$(nproc)` is too high. If this happens, try lowering the number of concurrent builds.
 
 ```
 cd ${DREDD_EXPERIMENTS_ROOT}
 for kind in mutated mutant-tracking
 do
-  SOURCE_DIR=llvm-${LLVM_VERSION}-${kind}/llvm
-  BUILD_DIR=llvm-${LLVM_VERSION}-${kind}-build
+  SOURCE_DIR=gcc-${GCC_VERSION}-${kind}
+  BUILD_DIR=gcc-${GCC_VERSION}-${kind}-build
   mkdir ${BUILD_DIR}
-  cmake -S "${SOURCE_DIR}" -B "${BUILD_DIR}" -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS="clang" -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++
-  # Build something minimal to ensure all auto-generated pieces of code are created.
-  cmake --build "${BUILD_DIR}" --target all
+  pushd ${BUILD_DIR}
+  ../${SOURCE_DIR}/configure --disable-bootstrap --enable-multilib --enable-languages=c,c++  --prefix=${DREDD_EXPERIMENTS_ROOT}/gcc-toolchains-${GCC_VERSION}-${kind}
+  bear -- make -j$(nproc)
+  popd
 done
 ```
 
@@ -88,32 +95,34 @@ Record the location of the `dredd` executable in an environment variable.
 export DREDD_EXECUTABLE=${DREDD_EXPERIMENTS_ROOT}/dredd/third_party/clang+llvm/bin/dredd
 ```
 
-Mutate all `.cpp` files under `InstCombine` in the copy of LLVM designated for mutation:
+Mutate all `tree-ssa-*.cc` files under `gcc` in the copy of GCC designated for mutation:
 
 ```
 cd ${DREDD_EXPERIMENTS_ROOT}
-FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutated/llvm/lib/Transforms/InstCombine/*.cpp | sort))
+FILES_TO_MUTATE=($(ls gcc-${GCC_VERSION}-mutated/gcc/tree-ssa-*.cc | sort))
 echo ${FILES[*]}
-${DREDD_EXECUTABLE} -p llvm-${LLVM_VERSION}-mutated-build/compile_commands.json --mutation-info-file llvm-mutated.json ${FILES_TO_MUTATE[*]}
+${DREDD_EXECUTABLE} -p gcc-${GCC_VERSION}-mutated-build/compile_commands.json --mutation-info-file gcc-mutated.json ${FILES_TO_MUTATE[*]}
 ```
 
-Apply mutation tracking to all `.cpp` files under `InstCombine` in the copy of LLVM designated for mutation tracking:
+Apply mutation tracking to all `tree-ssa-*.cc` files under `gcc` in the copy of GCC designated for mutation tracking:
 
 ```
 cd ${DREDD_EXPERIMENTS_ROOT}
-FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutant-tracking/llvm/lib/Transforms/InstCombine/*.cpp | sort))
+FILES_TO_MUTATE=($(ls gcc-${GCC_VERSION}-mutant-tracking/gcc/tree-ssa-*.cc | sort))
 echo ${FILES[*]}
-${DREDD_EXECUTABLE} --only-track-mutant-coverage -p llvm-${LLVM_VERSION}-mutant-tracking-build/compile_commands.json --mutation-info-file llvm-mutant-tracking.json ${FILES_TO_MUTATE[*]}
+${DREDD_EXECUTABLE} --only-track-mutant-coverage -p gcc-${GCC_VERSION}-mutant-tracking-build/compile_commands.json --mutation-info-file gcc-mutant-tracking.json ${FILES_TO_MUTATE[*]}
 ```
 
-Build entire LLVM project for both copies (this will take a long time):
+Build entire GCC project for both copies (this will take a long time):
 
 ```
 cd ${DREDD_EXPERIMENTS_ROOT}
 for kind in mutated mutant-tracking
 do
-  BUILD_DIR=llvm-${LLVM_VERSION}-${kind}-build
-  cmake --build ${BUILD_DIR}
+  BUILD_DIR=gcc-${GCC_VERSION}-${kind}-build
+  pushd ${BUILD_DIR}
+  make -j$(nprc)
+  popd
 done
 ```
 
@@ -128,16 +137,8 @@ python3 -m pip install -e .
 popd
 ```
 
-## Scripts to figure out which Dredd-induced mutants are killed by the LLVM test suite
+## Scripts to figure out which Dredd-induced mutants are killed by the GCC `test-ssa` testsuite
 
-```
-git clone https://github.com/llvm/llvm-test-suite.git
-cd llvm-test-suite
-git checkout llvmorg-${LLVM_VERSION}
-cd ..
-# Make sure that llvm-size is on your path. It is available from the just-built compiler, or from the compiler under dredd's third party directory. TODO: decide which one to use in instructions.
-cmake -G Ninja -S llvm-test-suite -B llvm-test-suite-build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-```
 
 You point it at:
 
