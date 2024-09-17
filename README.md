@@ -41,6 +41,12 @@ pushd dredd/third_party/clang+llvm
     mv clang+llvm-${DREDD_LLVM_TAG}-x86_64-linux-gnu-${OS}/* .
     rm clang+llvm.tar.xz
 popd
+
+# (Optional) For reproducibility, checkout the dredd version used below
+pushd dredd
+git checkout 2074c34a701211777554e4d2d6acdbb8fc1166f2
+popd
+
 DREDD_COMPILER_PATH=${DREDD_EXPERIMENTS_ROOT}/dredd/third_party/clang+llvm/bin
 cmake -S dredd -B dredd/build -G Ninja -DCMAKE_C_COMPILER=${DREDD_COMPILER_PATH}/clang -DCMAKE_CXX_COMPILER=${DREDD_COMPILER_PATH}/clang++
 cmake --build dredd/build --target dredd
@@ -91,6 +97,9 @@ export DREDD_EXECUTABLE=${DREDD_EXPERIMENTS_ROOT}/dredd/third_party/clang+llvm/b
 Mutate all `.cpp` files under `InstCombine` in the copy of LLVM designated for mutation:
 
 ```
+# (Optional) `sort` depend on locale, for reproducibility:
+export LC_ALL=C
+
 cd ${DREDD_EXPERIMENTS_ROOT}
 FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutated/llvm/lib/Transforms/InstCombine/*.cpp | sort))
 echo ${FILES[*]}
@@ -100,6 +109,9 @@ ${DREDD_EXECUTABLE} -p llvm-${LLVM_VERSION}-mutated-build/compile_commands.json 
 Apply mutation tracking to all `.cpp` files under `InstCombine` in the copy of LLVM designated for mutation tracking:
 
 ```
+# (Optional) `sort` depend on locale, for reproducibility:
+export LC_ALL=C
+
 cd ${DREDD_EXPERIMENTS_ROOT}
 FILES_TO_MUTATE=($(ls llvm-${LLVM_VERSION}-mutant-tracking/llvm/lib/Transforms/InstCombine/*.cpp | sort))
 echo ${FILES[*]}
