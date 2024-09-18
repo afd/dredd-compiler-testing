@@ -7,10 +7,11 @@ import random
 import tempfile
 import time
 
+from dredd_test_runners.common.constants import DEFAULT_COMPILATION_TIMEOUT, DEFAULT_RUNTIME_TIMEOUT
+from dredd_test_runners.common.hash_file import hash_file
+from dredd_test_runners.common.mutation_tree import MutationTree
 from dredd_test_runners.common.run_process_with_timeout import ProcessResult, run_process_with_timeout
 from dredd_test_runners.common.run_test_with_mutants import run_test_with_mutants, KillStatus
-from dredd_test_runners.common.mutation_tree import MutationTree
-from dredd_test_runners.common.hash_file import hash_file
 
 from pathlib import Path
 from typing import List, Set
@@ -55,11 +56,11 @@ def main():
                         help="Time in seconds to allow for generation of a program.",
                         type=int)
     parser.add_argument("--compile_timeout",
-                        default=5,
+                        default=DEFAULT_COMPILATION_TIMEOUT,
                         help="Time in seconds to allow for compilation of a generated program (without mutation).",
                         type=int)
     parser.add_argument("--run_timeout",
-                        default=10,
+                        default=DEFAULT_RUNTIME_TIMEOUT,
                         help="Time in seconds to allow for running a generated program (without mutation).",
                         type=int)
     parser.add_argument("--seed",
@@ -98,11 +99,13 @@ def main():
         random.seed(args.seed)
 
     with tempfile.TemporaryDirectory() as temp_dir_for_generated_code:
+        yarpgen_out_dir = Path(temp_dir_for_generated_code, '__gen')
         dredd_covered_mutants_path: Path = Path(temp_dir_for_generated_code, '__dredd_covered_mutants')
         generated_program_exe_compiled_with_no_mutants = Path(temp_dir_for_generated_code, '__regular.exe')
         generated_program_exe_compiled_with_mutant_tracking = Path(temp_dir_for_generated_code, '__tracking.exe')
         mutant_exe = Path(temp_dir_for_generated_code, '__mutant.exe')
-        yarpgen_out_dir = Path(temp_dir_for_generated_code, '__gen')
+        asan_ubsan_compiled_exe = Path(temp_dir_for_generated_code, '__asan_ubsan.exe')
+        msan_compiled_exe = Path(temp_dir_for_generated_code, '__msan.exe')
 
         killed_mutants: Set[int] = set()
         unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations))
@@ -120,16 +123,20 @@ def main():
                             time_of_last_kill=time_of_last_kill):
             if dredd_covered_mutants_path.exists():
                 os.remove(dredd_covered_mutants_path)
+            if yarpgen_out_dir.exists():
+                shutil.rmtree(yarpgen_out_dir)
             if generated_program_exe_compiled_with_no_mutants.exists():
                 os.remove(generated_program_exe_compiled_with_no_mutants)
             if generated_program_exe_compiled_with_mutant_tracking.exists():
                 os.remove(generated_program_exe_compiled_with_mutant_tracking)
-            if yarpgen_out_dir.exists():
-                shutil.rmtree(yarpgen_out_dir)
+            if asan_ubsan_compiled_exe.exists():
+                os.remove(asan_ubsan_compiled_exe)
+            if msan_compiled_exe.exists():
+                os.remove(msan_compiled_exe)
 
-            os.mkdir(yarpgen_out_dir)
 
             # Generate a Yarpgen program
+            os.mkdir(yarpgen_out_dir)
             yarpgen_seed = random.randint(0, 2 ** 32 - 1)
             yarpgen_cmd = [str(args.yarpgen_root / "build" / "yarpgen"),
                            "--std=c",
@@ -150,7 +157,8 @@ def main():
                 print(f"stderr: {yarpgen_result.stderr}")
                 continue
 
-            compiler_args = ["-O3", yarpgen_out_dir / "driver.c", yarpgen_out_dir / "func.c"]
+            compiler_args = ["-O3",
+                             yarpgen_out_dir / "driver.c", yarpgen_out_dir / "func.c"]
 
             # Compile the program without mutation.
             regular_compile_cmd = [args.mutated_compiler_executable]\
@@ -186,6 +194,52 @@ def main():
             if regular_execution_result.returncode != 0:
                 print("Execution of generated program failed without mutants.")
                 continue
+
+            # Compile and run the program with sanitizers - it should run without error. This is to guard against YARPGen
+            # emitting programs that feature undefined behaviour.
+            asan_ubsan_compile_command = ["clang-15"] + compiler_args + ["-fsanitize=address,undefined",
+                                                                         "-fno-sanitize-recover=undefined",
+                                                                         "-o",
+                                                                         asan_ubsan_compiled_exe]
+            asan_ubsan_compilation_result: ProcessResult = run_process_with_timeout(
+                asan_ubsan_compile_command,
+                timeout_seconds=args.compile_timeout * 10)
+            if asan_ubsan_compilation_result is None:
+                print("Compilation of generated program with asan/ubsan timed out.")
+                continue
+            if asan_ubsan_compilation_result.returncode != 0:
+                print("Compilation of generated program with asan/ubsan failed.")
+                continue
+            asan_ubsan_execution_result: ProcessResult = run_process_with_timeout(
+                cmd=[str(asan_ubsan_compiled_exe)], timeout_seconds=args.run_timeout * 10)
+            if asan_ubsan_execution_result is None:
+                print("Execution of generated program with asan/ubsan timed out.")
+                continue
+            if asan_ubsan_execution_result.returncode != 0:
+                print("Asan/ubsan error detected in generated program.")
+                continue
+
+            msan_compile_command = ["clang-15"] + compiler_args + ["-fsanitize=memory",
+                                                                   "-o",
+                                                                   msan_compiled_exe]
+            msan_compilation_result: ProcessResult = run_process_with_timeout(
+                msan_compile_command,
+                timeout_seconds=args.compile_timeout * 10)
+            if msan_compilation_result is None:
+                print("Compilation of generated program with msan timed out.")
+                continue
+            if msan_compilation_result.returncode != 0:
+                print("Compilation of generated program with msan failed.")
+                continue
+            msan_execution_result: ProcessResult = run_process_with_timeout(
+                cmd=[str(msan_compiled_exe)], timeout_seconds=args.run_timeout * 10)
+            if msan_execution_result is None:
+                print("Execution of generated program with msan timed out.")
+                continue
+            if msan_execution_result.returncode != 0:
+                print("Msan error detected in generated program.")
+                continue
+            # End of use of sanitizers on the generated program - it's looking good!
 
             # Compile the program with the mutant tracking compiler.
             tracking_environment = os.environ.copy()
