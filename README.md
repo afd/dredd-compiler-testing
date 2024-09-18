@@ -327,11 +327,11 @@ sudo apt install creduce gcc-12
 
 ```
 cd ${DREDD_EXPERIMENTS_ROOT}
-reduce-new-kills work ${DREDD_EXPERIMENTS_ROOT}/llvm-${LLVM_VERSION}-mutated-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/csmith
+reduce-new-kills work ${DREDD_EXPERIMENTS_ROOT}/llvm-${LLVM_VERSION}-mutated/Release/bin/clang ${DREDD_EXPERIMENTS_ROOT}/csmith
 ```
 
 To run many instances in parallel (16):
 
 ```
-for i in `seq 1 16`; do reduce-new-kills work ${DREDD_EXPERIMENTS_ROOT}/llvm-${LLVM_VERSION}-mutated-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/csmith & done
+for i in `seq 1 16`; do reduce-new-kills work ${DREDD_EXPERIMENTS_ROOT}/llvm-${LLVM_VERSION}-mutated/Release/bin/clang ${DREDD_EXPERIMENTS_ROOT}/csmith & done
 ```
