@@ -242,6 +242,31 @@ To kill them:
 pkill -9 -f csmith-runner
 ```
 
+# (or alternatively) YARPGen runner
+
+Get and build YARPGen:
+```
+git clone https://github.com/intel/yarpgen.git
+pushd yarpgen
+# (Optional) for reproducibility
+git checkout 700f5a2f564aab697ef8ff1b26afd50c3e729ecb
+
+mkdir build
+cd build
+cmake ..
+make -j$(proc)
+popd
+```
+
+```
+yarpgen-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin/clang llvm-${LLVM_VERSION}-mutant-tracking-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/yarpgen
+```
+
+To run many instances in parallel (16):
+
+```
+for i in `seq 1 16`; do yarpgen-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin/clang llvm-${LLVM_VERSION}-mutant-tracking-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/yarpgen & done
+```
 
 # Results analysis
 
