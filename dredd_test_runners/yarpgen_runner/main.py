@@ -320,7 +320,7 @@ def main():
                     print("Writing kill info to file.")
                     with open(mutant_path / "kill_info.json", "w") as outfile:
                         json.dump({"killing_test": yarpgen_test_name,
-                                   "kill_type": str(mutant_result)
+                                   "kill_type": str(mutant_result),
                                    "kill_timestamp": str(datetime.datetime.now()),
                                     }, outfile)
                 except FileExistsError:
@@ -356,7 +356,7 @@ def main():
                            "covered_mutants_count": len(covered_by_this_test),
                            "killed_mutants": killed_by_this_test,
                            "skipped_mutants_count": len(already_killed_by_other_tests),
-                           "survived_mutants_count": len(covered_but_not_killed_by_this_test)
+                           "survived_mutants_count": len(covered_but_not_killed_by_this_test),
                            "analysis_start_time": str(analysis_timestamp_start),
                            "analysis_end_time": str(analysis_timestamp_end),
                            }, outfile)
