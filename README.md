@@ -86,13 +86,6 @@ make install
 cd ..
 ```
 
-```
-<!-- cmake -S llvm-legacy/llvm-2.7 -B llvm-2.7-clean-build -G Ninja -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_CXX_FLAGS="-w" -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=gcc-11 -DCMAKE_CXX_COMPILER=g++-11 -DCXX_INCLUDE_ROOT=${HOME}/toolchains/include/c++/3.4.6 -DCXX_INCLUDE_ARCH=x86_64-unknown-linux-gnu -DC_INCLUDE_DIRS=/usr/include -->
-
-<!-- sudo apt-get install dejagnu -->
-./configure --with-c-include-dirs=/usr/include --with-cxx-include-root=${HOME}/toolchains/include/c++/3.4.6 --with-cxx-include-arch=x86_64-unknown-linux-gnu --with-extra-options=-Wno-narrowing
-```
-
 Now make two copies of the LLVM project--one that will be mutated, and another that will be used for the tracking of covered mutants.
 
 ```
@@ -301,13 +294,13 @@ popd
 ```
 
 ```
-yarpgen-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin/clang llvm-${LLVM_VERSION}-mutant-tracking-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/yarpgen
+yarpgen-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated/Release/bin/clang llvm-${LLVM_VERSION}-mutant-tracking/Release/bin/clang ${DREDD_EXPERIMENTS_ROOT}/yarpgen
 ```
 
 To run many instances in parallel (16):
 
 ```
-for i in `seq 1 16`; do yarpgen-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated-build/bin/clang llvm-${LLVM_VERSION}-mutant-tracking-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/yarpgen & done
+for i in `seq 1 16`; do yarpgen-runner llvm-mutated.json llvm-mutant-tracking.json llvm-${LLVM_VERSION}-mutated/Release/bin/clang llvm-${LLVM_VERSION}-mutant-tracking/Release/bin/clang ${DREDD_EXPERIMENTS_ROOT}/yarpgen & done
 ```
 
 # Results analysis

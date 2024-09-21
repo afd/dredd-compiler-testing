@@ -109,7 +109,7 @@ def main():
         msan_compiled_exe = Path(temp_dir_for_generated_code, '__msan.exe')
 
         killed_mutants: Set[int] = set()
-        unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations))
+        unkilled_mutants: Set[int] = set(range(0, mutation_tree.num_mutations+1))
 
         # Make a work directory in which information about the mutant killing process will be stored. If this already
         # exists that's OK - there may be other processes working on mutant killing, or we may be continuing a job that
@@ -158,7 +158,7 @@ def main():
                 print(f"stderr: {yarpgen_result.stderr}")
                 continue
 
-            compiler_args = ["-O3",
+            compiler_args = ["-O3", "-fPIC",
                              yarpgen_out_dir / "driver.c", yarpgen_out_dir / "func.c"]
 
             # Compile the program without mutation.
