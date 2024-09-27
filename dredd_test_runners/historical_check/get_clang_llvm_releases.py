@@ -6,6 +6,7 @@ import urllib.parse
 from pathlib import Path
 from typing import List
 from packaging import version
+from collections import OrderedDict
 
 PRE_GITHUH_RELEASE_URLS = url_pre_github = [
     "https://releases.llvm.org/7.0.1/clang+llvm-7.0.1-x86_64-linux-gnu-ubuntu-18.04.tar.xz",
@@ -70,7 +71,7 @@ def get_clang_llvm_releases(after_version: str) -> List[str]:
 
                 # Version smaller than requested versions, return result
                 if version.parse(match.group(1)) <= version.parse(after_version):
-                    return list(reversed(result))
+                    return list(reversed(OrderedDict.fromkeys(result)))
                 
                 if latest_ubuntu_version == "" or version.parse(match.group(2)) > version.parse(latest_ubuntu_version):
                     latest_ubuntu_version = match.group(2)
@@ -87,7 +88,7 @@ def get_clang_llvm_releases(after_version: str) -> List[str]:
             break 
         result.append(release_url)
 
-    return list(reversed(result))
+    return list(reversed(OrderedDict.fromkeys(result)))
 
 
 if __name__ == '__main__':
