@@ -293,3 +293,27 @@ To run many instances in parallel (16):
 ```
 for i in `seq 1 16`; do reduce-new-kills work ${DREDD_EXPERIMENTS_ROOT}/llvm-${LLVM_VERSION}-mutated-build/bin/clang ${DREDD_EXPERIMENTS_ROOT}/csmith & done
 ```
+
+# Package grown testsuite
+The following runner verifies that the reduced program is compilable with Clang/GCC under both `-O3` and `-O0` optimization levels. In the case of a miscompilation test case, it checks that the execution output of the binary, compiled by each compiler and optimization mode, produces the same result.
+
+```
+package-tests work ${DREDD_EXPERIMENTS_ROOT}/csmith
+```
+
+To run many instances in parallel (16):
+
+```
+for i in `seq 1 16`; do package-tests work ${DREDD_EXPERIMENTS_ROOT}/csmith & done
+```
+
+# Historical check
+
+Make sure the following package is installed:
+```
+sudo apt install gcc-multilib libncurses5
+```
+
+```
+historical-check work ${LLVM_VERSION} ${DREDD_EXPERIMENTS_ROOT}/csmith/
+```
