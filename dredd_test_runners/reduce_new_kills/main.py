@@ -124,7 +124,7 @@ def main():
         reduction_status = ""
         with open(os.path.join(current_reduction_dir, 'reduction_log.txt'), 'wb') as logfile:
             try:
-                creduce_proc = subprocess.Popen(['creduce', 'interesting.py', 'prog.c'],
+                creduce_proc = subprocess.Popen(['creduce', 'interesting.py', 'prog.c', '--n', '1'],
                                               cwd=current_reduction_dir, stdout=logfile, stderr=logfile,
                                               start_new_session=True)
                 creduce_proc.wait(timeout=43200)
