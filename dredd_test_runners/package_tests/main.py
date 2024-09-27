@@ -8,13 +8,93 @@ import shutil
 
 from pathlib import Path
 from typing import Dict
+from dataclasses import dataclass
 
+from typing import List
+
+@dataclass
+class Testcase:
+    mutant : int
+    prog_path : Path
+    kill_type : str
+
+
+def get_testcases_from_reductions_dir(reductions_dir: Path, killed_mutants_dir: Path, include_timeout: bool) -> List[Testcase]:
+    result : List[Testcase] = []
+
+    for testcase in reductions_dir.glob("*"):
+        if not testcase.is_dir():
+            continue
+
+        # Ensure the reduction_summary and kill_info noth exist
+        reductions_summary: Path = testcase / "reduction_summary.json"
+        if not reductions_summary.exists():
+            continue
+        mutant = str(testcase).replace(str(reductions_dir) + "/", "")
+        kill_info: Path = killed_mutants_dir / mutant / "kill_info.json"
+        if not kill_info.exists():
+            continue
+        reductions_summary_json: Dict = json.load(open(reductions_summary, "r"))
+        kill_info_json: Dict = json.load(open(kill_info, "r"))
+
+        # Check that the testcase is successfully reduced.
+        if (
+            reductions_summary_json["reduction_status"] != "SUCCESS"
+            and not (
+                include_timeout
+                and reductions_summary_json["reduction_status"] == "TIMEOUT"
+            )
+        ):
+            print(
+                f"Skipping testsuite generation for mutant {mutant} creduce has status {reductions_summary_json['reduction_status']}."
+            )
+            continue
+
+        # ensure test case source file exists
+        prog = testcase / "prog.c"
+        if not prog.is_file():
+            continue
+        prog = os.path.abspath(prog)
+
+        result.append(Testcase(int(mutant), prog, kill_info_json["kill_type"]))
+
+    return result
+
+def get_testcases_from_test_dir(tests_dir: Path, killed_mutants_dir: Path) -> List[Testcase]:
+    result : List[Testcase] = []
+
+    # Figure out all the tests that have killed mutants in ways for which reduction is
+    # actionable. A reason for determining all such tests upfront is that after we reduce one
+    # such test, it would be possible to see whether it kills any of the mutants killed by the other
+    # tests, avoiding the need to reduce those tests too if so. (However, this is not implemented at
+    # present and it may prove simpler to do all of the reductions and subsequently address
+    # redundancy.)
+    for test in tests_dir.glob('*'):
+        if not test.is_dir():
+            continue
+        if not test.name.startswith("csmith"):
+            continue
+        kill_summary: Path = test / "kill_summary.json"
+        if not kill_summary.exists():
+            continue
+        kill_summary_json: Dict = json.load(open(kill_summary, 'r'))
+        for mutant in kill_summary_json["killed_mutants"]:
+            mutant_summary = json.load(open(killed_mutants_dir / str(mutant) / "kill_info.json", 'r'))
+            kill_type: str = mutant_summary['kill_type']
+            if (kill_type == 'KillStatus.KILL_DIFFERENT_STDOUT'
+                    or kill_type == 'KillStatus.KILL_RUNTIME_TIMEOUT'
+                    or kill_type == 'KillStatus.KILL_DIFFERENT_EXIT_CODES'
+                    or kill_type == 'KillStatus.KILL_COMPILER_CRASH'):
+                # Test case reduction may be feasible and useful for this kill.
+                result.append(Testcase(mutant, tests_dir / mutant_summary['killing_test'] / 'prog.c', kill_type))
+    
+    return result
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "work_dir",
-        help="Directory containing test results. It should have subdirectories, 'killed_mutants' and 'reductions' .",
+        help="Directory containing test results. It should have subdirectories, 'killed_mutants' and 'reductions'(unless `use_unreduced_testcase` option is used) .",
         type=Path,
     )
     parser.add_argument(
@@ -40,71 +120,46 @@ def main():
     if not work_dir.exists() or not work_dir.is_dir():
         print(f"Error: {str(work_dir)} is not a working directory.")
         sys.exit(1)
+    tests_dir = work_dir / "tests"
+    if not tests_dir.exists() or not tests_dir.is_dir():
+        print(f"Error: {str(tests_dir)} does not exist.")
+        sys.exit(1)
     killed_mutants_dir = work_dir / "killed_mutants"
     if not killed_mutants_dir.exists() or not killed_mutants_dir.is_dir():
         print(f"Error: {str(killed_mutants_dir)} does not exist.")
         sys.exit(1)
     reductions_dir = work_dir / "reductions"
-    if not reductions_dir.exists() or not reductions_dir.is_dir():
+    if not args.use_unreduced_testcase and (not reductions_dir.exists() or not reductions_dir.is_dir()):
         print(f"Error: {str(reductions_dir)} does not exist.")
         sys.exit(1)
 
     testsuite_dir: Path = work_dir / "testsuite"
     Path(testsuite_dir).mkdir(exist_ok=True)
 
-    for testcase in reductions_dir.glob("*"):
-        if not testcase.is_dir():
-            continue
-
-        # Ensure the reduction_summary and kill_info noth exist
-        reductions_summary: Path = testcase / "reduction_summary.json"
-        if not reductions_summary.exists():
-            continue
-        mutant = str(testcase).replace(str(reductions_dir) + "/", "")
-        kill_info: Path = killed_mutants_dir / mutant / "kill_info.json"
-        if not kill_info.exists():
-            continue
-        reductions_summary_json: Dict = json.load(open(reductions_summary, "r"))
-        kill_info_json: Dict = json.load(open(kill_info, "r"))
-
-        # Check that the testcase is successfully reduced.
-        if (
-            reductions_summary_json["reduction_status"] != "SUCCESS"
-            and not (
-                args.include_timeout
-                and reductions_summary_json["reduction_status"] == "TIMEOUT"
-            )
-            and not args.use_unreduced_testcase
-        ):
-            print(
-                f"Skipping testsuite generation for mutant {mutant} creduce has status {reductions_summary_json['reduction_status']}."
-            )
-            continue
+    if args.use_unreduced_testcase:
+        testcases = get_testcases_from_test_dir(tests_dir, killed_mutants_dir)
+    else:
+        testcases = get_testcases_from_reductions_dir(reductions_dir, killed_mutants_dir, args.include_timeout)
+        
+    
+    for testcase in testcases:
 
         # Create a directory for this test case
-        current_testsuite_dir: Path = testsuite_dir / str(mutant)
+        current_testsuite_dir: Path = testsuite_dir / str(testcase.mutant)
         try:
             current_testsuite_dir.mkdir()
         except FileExistsError:
             continue
 
-        # ensure test case source file exists
-        prog = testcase / (
-            "prog.c" if not args.use_unreduced_testcase else "prog.c.orig"
-        )
-        if not prog.is_file():
-            continue
-        prog = os.path.abspath(prog)
-
         # Check whether the test is miscompilation test or crash test
         testcase_is_miscompilation_check = (
-            not kill_info_json["kill_type"] == "KillStatus.KILL_COMPILER_CRASH"
+            not testcase.kill_type == "KillStatus.KILL_COMPILER_CRASH"
         )
 
-        print(f"Starting testsuite generaton for {testcase.name}.")
+        print(f"Starting testsuite generaton for {testcase.mutant}.")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            shutil.copy(prog, Path(tmpdir) / "prog.c")
+            shutil.copy(testcase.prog_path, Path(tmpdir) / "prog.c")
 
             # Common compiler args
             compiler_args = [
@@ -126,7 +181,7 @@ def main():
             )
             if proc.returncode != 0:
                 print(
-                    f"clang -O0 compilation for {testcase.name} failed with return code {proc.returncode}:"
+                    f"clang -O0 compilation for {testcase.mutant} failed with return code {proc.returncode}:"
                 )
                 print(proc.stderr.decode())
                 continue
@@ -145,7 +200,7 @@ def main():
             )
             if proc.returncode != 0:
                 print(
-                    f"clang -O3 compilation for {testcase.name} failed with return code {proc.returncode}:"
+                    f"clang -O3 compilation for {testcase.mutant} failed with return code {proc.returncode}:"
                 )
                 print(proc.stderr.decode())
                 continue
@@ -157,7 +212,7 @@ def main():
 
                 if clang_output_O3 != clang_output_O0:
                     print(
-                        f"clang -O0 and -O3 give different output for {testcase.name}"
+                        f"clang -O0 and -O3 give different output for {testcase.mutant}"
                     )
                     continue
 
@@ -170,7 +225,7 @@ def main():
             )
             if proc.returncode != 0:
                 print(
-                    f"gcc -O0 compilation for {testcase.name} failed with return code {proc.returncode}:"
+                    f"gcc -O0 compilation for {testcase.mutant} failed with return code {proc.returncode}:"
                 )
                 print(proc.stderr.decode())
                 continue
@@ -181,7 +236,7 @@ def main():
                 gcc_output_O0 = proc.stdout
 
                 if gcc_output_O0 != clang_output_O0:
-                    print(f"gcc and clang give different output for {testcase.name}")
+                    print(f"gcc and clang give different output for {testcase.mutant}")
                     continue
 
             # compile with gcc with -O3
@@ -193,7 +248,7 @@ def main():
             )
             if proc.returncode != 0:
                 print(
-                    f"gcc -O3 compilation for {testcase.name} failed with return code {proc.returncode}:"
+                    f"gcc -O3 compilation for {testcase.mutant} failed with return code {proc.returncode}:"
                 )
                 print(proc.stderr.decode())
                 continue
@@ -204,15 +259,15 @@ def main():
                 gcc_output_O3 = proc.stdout
 
                 if gcc_output_O3 != clang_output_O0:
-                    print(f"gcc -O0 and -O3 give different output for {testcase.name}")
+                    print(f"gcc -O0 and -O3 give different output for {testcase.mutant}")
                     continue
 
-            shutil.copy(prog, current_testsuite_dir / "prog.c")
+            shutil.copy(testcase.prog_path, current_testsuite_dir / "prog.c")
             if testcase_is_miscompilation_check:
                 with open(current_testsuite_dir / "prog.reference_output", "bw+") as f:
                     f.write(gcc_output_O3)
 
-        print(f"Testsuite generaton for {testcase.name} succeed.")
+        print(f"Testsuite generaton for {testcase.mutant} succeed.")
 
 
 if __name__ == "__main__":
