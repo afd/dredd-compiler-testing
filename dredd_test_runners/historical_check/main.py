@@ -109,7 +109,7 @@ def main():
                         type=Path)
     args = parser.parse_args()
 
-    testsuite_dir = args.work_dir / "testsuite"
+    testsuite_dir = args.work_dir.resolve() / "testsuite"
     if not testsuite_dir.exists() or not testsuite_dir.is_dir():
         print(f"Error: {str(testsuite_dir)} does not exist.")
         sys.exit(1)

@@ -309,7 +309,7 @@ for i in `seq 1 16`; do package-tests work ${DREDD_EXPERIMENTS_ROOT}/csmith & do
 
 # Historical check
 
-Make sure the following package is installed:
+Make sure the following packages are installed:
 ```
 sudo apt install gcc-multilib libncurses5
 ```

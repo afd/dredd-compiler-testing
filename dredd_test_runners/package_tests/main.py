@@ -23,6 +23,18 @@ def main():
         "'build' beneath this directory.",
         type=Path,
     )
+    parser.add_argument(
+        "--include_timeout",
+        default=False,
+        action="store_true",
+        help="Include timed out testcase in its final form.",
+    )
+    parser.add_argument(
+        "--use_unreduced_testcase",
+        default=False,
+        action="store_true",
+        help="Use original unreduced program instead of reduced program.",
+    )
     args = parser.parse_args()
     work_dir: Path = args.work_dir
     if not work_dir.exists() or not work_dir.is_dir():
@@ -56,7 +68,14 @@ def main():
         kill_info_json: Dict = json.load(open(kill_info, "r"))
 
         # Check that the testcase is successfully reduced.
-        if reductions_summary_json["reduction_status"] != "SUCCESS":
+        if (
+            reductions_summary_json["reduction_status"] != "SUCCESS"
+            and not (
+                args.include_timeout
+                and reductions_summary_json["reduction_status"] == "TIMEOUT"
+            )
+            and not args.use_unreduced_testcase
+        ):
             print(
                 f"Skipping testsuite generation for mutant {mutant} creduce has status {reductions_summary_json['reduction_status']}."
             )
@@ -67,13 +86,12 @@ def main():
         try:
             current_testsuite_dir.mkdir()
         except FileExistsError:
-            print(
-                f"Skipping testsuite generation for mutant {mutant} as {current_testsuite_dir} already exists."
-            )
             continue
 
         # ensure test case source file exists
-        prog = testcase / "prog.c"
+        prog = testcase / (
+            "prog.c" if not args.use_unreduced_testcase else "prog.c.orig"
+        )
         if not prog.is_file():
             continue
         prog = os.path.abspath(prog)
@@ -86,6 +104,8 @@ def main():
         print(f"Starting testsuite generaton for {testcase.name}.")
 
         with tempfile.TemporaryDirectory() as tmpdir:
+            shutil.copy(prog, Path(tmpdir) / "prog.c")
+
             # Common compiler args
             compiler_args = [
                 "-I",
@@ -100,7 +120,7 @@ def main():
 
             # compile with clang-15
             proc = subprocess.run(
-                ["clang-15", *compiler_args, "-O0", prog, "-o", "__clang_O0"],
+                ["clang-15", *compiler_args, "-O0", "prog.c", "-o", "__clang_O0"],
                 cwd=tmpdir,
                 capture_output=True,
             )
@@ -118,7 +138,7 @@ def main():
 
             # compile with clang-15 with -O3
             proc = subprocess.run(
-                ["clang-15", *compiler_args, "-O3", prog, "-o", "__clang_O3"]
+                ["clang-15", *compiler_args, "-O3", "prog.c", "-o", "__clang_O3"]
                 + compiler_args,
                 cwd=tmpdir,
                 capture_output=True,
@@ -143,7 +163,7 @@ def main():
 
             # compile with gcc with -O0
             proc = subprocess.run(
-                ["gcc-12", *compiler_args, "-O0", prog, "-o", "__gcc_O0"]
+                ["gcc-12", *compiler_args, "-O0", "prog.c", "-o", "__gcc_O0"]
                 + compiler_args,
                 cwd=tmpdir,
                 capture_output=True,
@@ -166,7 +186,7 @@ def main():
 
             # compile with gcc with -O3
             proc = subprocess.run(
-                ["gcc-12", *compiler_args, "-O3", prog, "-o", "__gcc_O3"]
+                ["gcc-12", *compiler_args, "-O3", "prog.c", "-o", "__gcc_O3"]
                 + compiler_args,
                 cwd=tmpdir,
                 capture_output=True,
