@@ -50,13 +50,11 @@ def get_testcases_from_reductions_dir(reductions_dir: Path, killed_mutants_dir: 
             )
             continue
 
-        # ensure test case source file exists
-        prog = testcase / "prog.c"
-        if not prog.is_file():
+        # ensure some compilable source file exist
+        if len(list(testcase.glob('*.c'))) == 0:
             continue
-        prog = os.path.abspath(prog)
 
-        result.append(Testcase(int(mutant), prog, kill_info_json["kill_type"]))
+        result.append(Testcase(int(mutant), testcase, kill_info_json["kill_type"]))
 
     return result
 
@@ -85,8 +83,15 @@ def get_testcases_from_test_dir(tests_dir: Path, killed_mutants_dir: Path) -> Li
                     or kill_type == 'KillStatus.KILL_RUNTIME_TIMEOUT'
                     or kill_type == 'KillStatus.KILL_DIFFERENT_EXIT_CODES'
                     or kill_type == 'KillStatus.KILL_COMPILER_CRASH'):
+
+                testcase = tests_dir / mutant_summary['killing_test']
+
+                # ensure some compilable source file exist
+                if len(list(testcase.glob('*.c'))) == 0:
+                    continue
+
                 # Test case reduction may be feasible and useful for this kill.
-                result.append(Testcase(mutant, tests_dir / mutant_summary['killing_test'] / 'prog.c', kill_type))
+                result.append(Testcase(mutant, testcase, kill_type))
     
     return result
 
@@ -159,7 +164,10 @@ def main():
         print(f"Starting testsuite generaton for {testcase.mutant}.")
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            shutil.copy(testcase.prog_path, Path(tmpdir) / "prog.c")
+            testfiles_path = list(testcase.prog_path.glob('*.[ch]'))
+            testfiles = [os.path.basename(p) for p in testfiles_path]
+            for filepath in testfiles_path:
+                shutil.copy(filepath, Path(tmpdir))
 
             # Common compiler args
             compiler_args = [
@@ -175,7 +183,7 @@ def main():
 
             # compile with clang-15
             proc = subprocess.run(
-                ["clang-15", *compiler_args, "-O0", "prog.c", "-o", "__clang_O0"],
+                ["clang-15", *compiler_args, "-O0", *testfiles, "-o", "__clang_O0"],
                 cwd=tmpdir,
                 capture_output=True,
             )
@@ -193,7 +201,7 @@ def main():
 
             # compile with clang-15 with -O3
             proc = subprocess.run(
-                ["clang-15", *compiler_args, "-O3", "prog.c", "-o", "__clang_O3"]
+                ["clang-15", *compiler_args, "-O3", *testfiles, "-o", "__clang_O3"]
                 + compiler_args,
                 cwd=tmpdir,
                 capture_output=True,
@@ -218,7 +226,7 @@ def main():
 
             # compile with gcc with -O0
             proc = subprocess.run(
-                ["gcc-12", *compiler_args, "-O0", "prog.c", "-o", "__gcc_O0"]
+                ["gcc-12", *compiler_args, "-O0", *testfiles, "-o", "__gcc_O0"]
                 + compiler_args,
                 cwd=tmpdir,
                 capture_output=True,
@@ -241,7 +249,7 @@ def main():
 
             # compile with gcc with -O3
             proc = subprocess.run(
-                ["gcc-12", *compiler_args, "-O3", "prog.c", "-o", "__gcc_O3"]
+                ["gcc-12", *compiler_args, "-O3", *testfiles, "-o", "__gcc_O3"]
                 + compiler_args,
                 cwd=tmpdir,
                 capture_output=True,
@@ -262,7 +270,9 @@ def main():
                     print(f"gcc -O0 and -O3 give different output for {testcase.mutant}")
                     continue
 
-            shutil.copy(testcase.prog_path, current_testsuite_dir / "prog.c")
+            # shutil.copy(testcase.prog_path, current_testsuite_dir / "prog.c")
+            for filepath in testfiles_path:
+                shutil.copy(filepath, current_testsuite_dir)
             if testcase_is_miscompilation_check:
                 with open(current_testsuite_dir / "prog.reference_output", "bw+") as f:
                     f.write(gcc_output_O3)
