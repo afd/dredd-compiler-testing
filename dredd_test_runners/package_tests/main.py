@@ -70,7 +70,7 @@ def get_testcases_from_test_dir(tests_dir: Path, killed_mutants_dir: Path) -> Li
     for test in tests_dir.glob('*'):
         if not test.is_dir():
             continue
-        if not test.name.startswith("csmith"):
+        if not test.name.startswith("csmith") and not test.name.startswith("yarpgen"):
             continue
         kill_summary: Path = test / "kill_summary.json"
         if not kill_summary.exists():
@@ -145,7 +145,7 @@ def main():
         testcases = get_testcases_from_test_dir(tests_dir, killed_mutants_dir)
     else:
         testcases = get_testcases_from_reductions_dir(reductions_dir, killed_mutants_dir, args.include_timeout)
-        
+
     
     for testcase in testcases:
 
@@ -166,6 +166,7 @@ def main():
         with tempfile.TemporaryDirectory() as tmpdir:
             testfiles_path = list(testcase.prog_path.glob('*.[ch]'))
             testfiles = [os.path.basename(p) for p in testfiles_path]
+            c_files = [f for f in testfiles if f.endswith('.c')]
             for filepath in testfiles_path:
                 shutil.copy(filepath, Path(tmpdir))
 
@@ -183,7 +184,8 @@ def main():
 
             # compile with clang-15
             proc = subprocess.run(
-                ["clang-15", *compiler_args, "-O0", *testfiles, "-o", "__clang_O0"],
+                ["clang-15", *compiler_args, "-O0", *c_files] 
+                + (["-o", "__clang_O0"] if testcase_is_miscompilation_check else []),
                 cwd=tmpdir,
                 capture_output=True,
             )
@@ -201,8 +203,8 @@ def main():
 
             # compile with clang-15 with -O3
             proc = subprocess.run(
-                ["clang-15", *compiler_args, "-O3", *testfiles, "-o", "__clang_O3"]
-                + compiler_args,
+                ["clang-15", *compiler_args, "-O3", *c_files]
+                + (["-o", "__clang_O3"] if testcase_is_miscompilation_check else []),
                 cwd=tmpdir,
                 capture_output=True,
             )
@@ -226,8 +228,8 @@ def main():
 
             # compile with gcc with -O0
             proc = subprocess.run(
-                ["gcc-12", *compiler_args, "-O0", *testfiles, "-o", "__gcc_O0"]
-                + compiler_args,
+                ["gcc-12", *compiler_args, "-O0", *c_files]
+                + (["-o", "__gcc_O0"] if testcase_is_miscompilation_check else []),
                 cwd=tmpdir,
                 capture_output=True,
             )
@@ -249,8 +251,8 @@ def main():
 
             # compile with gcc with -O3
             proc = subprocess.run(
-                ["gcc-12", *compiler_args, "-O3", *testfiles, "-o", "__gcc_O3"]
-                + compiler_args,
+                ["gcc-12", *compiler_args, "-O3", *c_files]
+                + (["-o", "__gcc_O3"] if testcase_is_miscompilation_check else []),
                 cwd=tmpdir,
                 capture_output=True,
             )
