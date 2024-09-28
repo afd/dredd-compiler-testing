@@ -17,13 +17,13 @@ def check_compiler_with_test(csmith_root: Path, compiler_path: Path, test_dir_pa
     # print(f"Checking {compiler_path} on {test_dir_path}")
     compiler_args = ["-I", f"{csmith_root}/runtime", "-I", f"{csmith_root}/build/runtime", "-pedantic", "-Wall", "-fPIC"]
 
-    test_prog_path = test_dir_path / 'prog.c'
-    if not test_prog_path.exists():
-        print(f"{test_prog_path} doesn't exist")
+    test_prog_path = list(test_dir_path.glob('*.c'))
+    if len(test_prog_path) == 0:
+        print(f"No compilable file in {str(test_dir_path)}")
         return False
     
     with tempfile.TemporaryDirectory() as tmpdir:
-        proc = subprocess.run([compiler_path, *compiler_args, "-O3", test_prog_path, "-c", "-o", "prog.o"], cwd=tmpdir, capture_output=True)
+        proc = subprocess.run([compiler_path, *compiler_args, "-O3", *test_prog_path, "-c"], cwd=tmpdir, capture_output=True)
         if proc.returncode != 0:
             print(f'Compilation failed for {compiler_path} with testcase {test_dir_path}:')
             print(proc.stderr.decode())
@@ -33,7 +33,8 @@ def check_compiler_with_test(csmith_root: Path, compiler_path: Path, test_dir_pa
         is_miscompilation_test = reference_output_path.exists()
 
         if is_miscompilation_test:
-            proc = subprocess.run(['clang-15', *compiler_args, "prog.o", "-o", "prog.exe"], cwd=tmpdir, capture_output=True)
+            object_files = [os.path.basename(f).replace('.c','.o') for f in test_prog_path]
+            proc = subprocess.run(['clang-15', *compiler_args, *object_files, "-o", "prog.exe"], cwd=tmpdir, capture_output=True)
             if proc.returncode != 0:
                 print(f'Linking failed for {compiler_path} with testcase {test_dir_path}:')
                 print(proc.stderr.decode())
