@@ -314,6 +314,11 @@ Make sure the following packages are installed:
 sudo apt install gcc-multilib libncurses5
 ```
 
+You might need to remove testcases that failed to be packaged in `package-tests`:
+```
+find work/testsuite/ -empty -type d -delete
+```
+
 ```
 historical-check work ${LLVM_VERSION} ${DREDD_EXPERIMENTS_ROOT}/csmith/
 ```
