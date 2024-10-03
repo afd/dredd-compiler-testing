@@ -168,6 +168,20 @@ def main():
                 os.killpg(os.getpgid(creduce_proc.pid), signal.SIGTERM)
         reduction_end_time: datetime.datetime = datetime.datetime.now()
 
+        # Split the combined file into seperate file in necessary
+        if is_yarpgen_testcase:
+            with open(current_reduction_dir / 'combined.c', 'r') as combined_f:
+                combined_file_content = combined_f.read()
+            seperated_contents = combined_file_content.split("// SENTINEL\n")
+            if len(seperated_contents) < 2:
+                # SENTINEL comment not present in combined file
+                raise Exception("SENTINEL comment not present in combined file.")
+            for i in range(len(seperated_contents)):
+                with open(current_reduction_dir / f"file_{i}.c", 'w') as seperated_f:
+                    seperated_f.write(seperated_contents[i])
+            os.remove(current_reduction_dir / 'combined.c')
+
+
         # Store reduction information
         with open(os.path.join(current_reduction_dir, 'reduction_summary.json'), 'w') as summary_file:
             json.dump({"reduction_status": reduction_status,
