@@ -57,7 +57,7 @@ def main():
     for test in tests_dir.glob('*'):
         if not test.is_dir():
             continue
-        if not test.name.startswith("csmith"):
+        if not test.name.startswith("csmith") and not test.name.startswith("yarpgen"):
             continue
         kill_summary: Path = test / "kill_summary.json"
         if not kill_summary.exists():
@@ -92,6 +92,32 @@ def main():
 
         print(f"Preparing to reduce mutant {mutant_to_reduce}. Details: {mutant_summary}")
 
+        is_yarpgen_testcase = mutant_summary["killing_test"].startswith("yarpgen")
+
+        if is_yarpgen_testcase:
+            # inline init.h in func.c
+            with open(tests_dir / killed_mutant_to_test_info[mutant_to_reduce]['killing_test'] / 'init.h', 'r') as init_f:
+                init_content = init_f.read()
+            with open(tests_dir / killed_mutant_to_test_info[mutant_to_reduce]['killing_test'] / 'func.c', 'r') as func_f:
+                func_content = func_f.read()
+            combined_file_content = func_content.replace('#include "init.h"', init_content)
+
+            # Add SENTINEL comment to add as seperator btween func.c and driver.c
+            combined_file_content += "\n// SENTINEL\n"
+
+            # Add content of driver.c
+            with open(tests_dir / killed_mutant_to_test_info[mutant_to_reduce]['killing_test'] / 'driver.c', 'r') as driver_f:
+                combined_file_content += driver_f.read()
+
+            # write the combined file into combined.c
+            with open(current_reduction_dir / 'combined.c', 'w') as combined_f:
+                combined_f.write(combined_file_content)
+            program_to_check = "combined.c"
+        else:
+            shutil.copy(src=tests_dir / killed_mutant_to_test_info[mutant_to_reduce]['killing_test'] / 'prog.c',
+                    dst=current_reduction_dir / 'prog.c')
+            program_to_check = "prog.c"
+
         interestingness_test_template_file = \
             "interesting_crash.py.template"\
             if mutant_summary['kill_type'] == 'KillStatus.KILL_COMPILER_CRASH'\
@@ -101,7 +127,7 @@ def main():
             loader=jinja2.FileSystemLoader(
                 searchpath=os.path.dirname(os.path.realpath(__file__)))).get_template(interestingness_test_template_file)
         open(current_reduction_dir / 'interesting.py', 'w').write(interestingness_test_template.render(
-            program_to_check="prog.c",
+            program_to_check=program_to_check,
             mutated_compiler_executable=args.mutated_compiler_executable,
             csmith_root=args.csmith_root,
             mutation_ids=str(mutant_to_reduce),
@@ -116,15 +142,13 @@ def main():
         # Make the interestingness test executable.
         st = os.stat(current_reduction_dir / 'interesting.py')
         os.chmod(current_reduction_dir / 'interesting.py', st.st_mode | stat.S_IEXEC)
-        shutil.copy(src=tests_dir / killed_mutant_to_test_info[mutant_to_reduce]['killing_test'] / 'prog.c',
-                    dst=current_reduction_dir / 'prog.c')
 
         # Run creduce with 12 hour timeout and store in logfile
         reduction_start_time: datetime.datetime = datetime.datetime.now()
         reduction_status = ""
         with open(os.path.join(current_reduction_dir, 'reduction_log.txt'), 'wb') as logfile:
             try:
-                creduce_proc = subprocess.Popen(['creduce', 'interesting.py', 'prog.c', '--n', '1'],
+                creduce_proc = subprocess.Popen(['creduce', 'interesting.py', program_to_check, '--n', '1'],
                                               cwd=current_reduction_dir, stdout=logfile, stderr=logfile,
                                               start_new_session=True)
                 creduce_proc.wait(timeout=43200)
